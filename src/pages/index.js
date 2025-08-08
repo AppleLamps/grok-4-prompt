@@ -133,7 +133,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Prompt Generator - Transform Ideas into Perfect AI Prompts</title>
+        <title>Grok 4 Imagine Prompt Generator - Transform your ideas into vivid, high-quality prompts for Grok 4 Imagine</title>
       </Head>
 
       <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -144,10 +144,10 @@ export default function Home() {
             <header className="text-center mb-16">
               <div className="animate-fade-in-up">
                 <h1 className="text-6xl font-bold text-gradient mb-4 tracking-tight">
-                  Prompt Generator
+                  Grok 4 Imagine Prompt Generator
                 </h1>
                 <p className="text-xl text-primary-600 font-medium opacity-90">
-                  Transform your ideas into perfect AI prompts
+                  Transform your ideas into vivid, high-quality prompts for Grok 4 Imagine
                 </p>
               </div>
             </header>
