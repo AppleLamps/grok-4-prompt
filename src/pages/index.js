@@ -144,7 +144,7 @@ export default function Home() {
             <header className="text-center mb-16">
               <div className="animate-fade-in-up">
                 <h1 className="text-6xl font-bold text-gradient mb-4 tracking-tight">
-                  Grok 4 Imagine Prompt Generator
+                  Grok 4 Imagine <br /> Prompt Generator
                 </h1>
                 <p className="text-xl text-primary-600 font-medium opacity-90">
                   Transform your ideas into vivid, high-quality prompts for Grok 4 Imagine
