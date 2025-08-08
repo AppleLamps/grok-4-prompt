@@ -315,7 +315,8 @@ export default function Home() {
                   <button
                     type="submit"
                     disabled={isLoading || !idea.trim()}
-                    className="premium-button min-h-[56px] sm:min-h-[64px] relative text-base sm:text-lg font-semibold"
+                    aria-busy={isLoading}
+                    className={`premium-button min-h-[56px] sm:min-h-[64px] relative text-base sm:text-lg font-semibold ${isLoading ? 'loading' : ''}`}
                   >
                     {isLoading ? (
                       <div className="flex items-center justify-center">
