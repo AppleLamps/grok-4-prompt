@@ -5,7 +5,7 @@
 export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') {
-    return res.status(405).json({ 
+    return res.status(405).json({
       error: 'Method not allowed',
       message: 'This endpoint only accepts POST requests'
     });
@@ -32,6 +32,51 @@ export default async function handler(req, res) {
       });
     }
 
+    // Ensure the response is a single, clean prompt without markdown/preambles
+    const sanitizeToPrompt = (raw) => {
+      try {
+        let t = (raw || '').toString().trim();
+
+        // Remove code fences if present
+        t = t.replace(/^```(?:[a-zA-Z0-9]+)?\s*[\r\n]?([\s\S]*?)\s*```$/m, '$1').trim();
+
+        // If there are horizontal rule separators, take the last section
+        if (t.includes('---')) {
+          const parts = t.split(/\n?---+\n?/g).map(p => p.trim()).filter(Boolean);
+          if (parts.length) t = parts[parts.length - 1];
+        }
+
+        // If there is a label like "Final Prompt:" or "Prompt for AI Image Generation:", take text after it
+        const labelMatch = t.match(/(?:^|\n)\s*(?:final\s*)?prompt[^:]*:\s*/i);
+        if (labelMatch) {
+          t = t.slice(labelMatch.index + labelMatch[0].length).trim();
+        }
+
+        // Strip common markdown decorations
+        t = t
+          .replace(/^#+\s*/gm, '')
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1')
+          .replace(/^[>\-\s]*\*/gm, '')
+          .replace(/^>\s*/gm, '');
+
+        // Collapse whitespace to single spaces
+        t = t.replace(/\s+/g, ' ').trim();
+
+        // Enforce 1024 characters max, cut at word boundary
+        if (t.length > 1024) {
+          t = t.slice(0, 1024);
+          const lastSpace = t.lastIndexOf(' ');
+          if (lastSpace > 0) t = t.slice(0, lastSpace);
+        }
+
+        return t;
+      } catch {
+        return (raw || '').toString().trim();
+      }
+    };
+
+
     // Combine user inputs into a single prompt
     let userPrompt = `Idea: ${idea.trim()}`;
     if (directions && typeof directions === 'string' && directions.trim().length > 0) {
@@ -44,7 +89,17 @@ export default async function handler(req, res) {
       messages: [
         {
           role: 'system',
-          content: 'You are a prompt generator that creates detailed, optimized prompts for AI systems. Transform the user\'s idea into a comprehensive, well-structured prompt that will produce the best possible results. Make the prompt clear, specific, and actionable.'
+          content: `You are GrokBot, an AI prompt generator. Your task is to create a comprehensive, vivid, and descriptive narrative prompt based on the user’s input.
+
+
+
+- Always assume the user’s input—whether text, idea, or image description—is a request for prompt creation.
+- The prompt must be rich in detail and stay under 1024 characters.
+- Incorporate specific details such as colors, mood, style, medium, subject matter, composition, perspective, dynamic elements, emotion, narrative context, time period, culture, symbolism, and text integration when relevant.
+- Ensure the prompt is clear, actionable, and directly aligned with the user’s intent.
+- If the input contains a person’s name, include it in the prompt.
+- Use creative and precise language to make the prompt ready for AI image generation or storytelling.
+- Output ONLY the final prompt as plain text. Do not include any headings, labels, markdown, backticks, explanations, or extra paragraphs—just the prompt text.`
         },
         {
           role: 'user',
@@ -73,7 +128,7 @@ export default async function handler(req, res) {
     // Check if the OpenRouter API request was successful
     if (!openRouterResponse.ok) {
       const errorData = await openRouterResponse.json().catch(() => ({}));
-      
+
       // Log error for debugging (don't expose internal errors to client)
       console.error('OpenRouter API Error:', {
         status: openRouterResponse.status,
@@ -117,7 +172,8 @@ export default async function handler(req, res) {
       });
     }
 
-    const generatedPrompt = data.choices[0].message.content.trim();
+    const generatedPromptRaw = data.choices[0].message.content?.toString().trim() || '';
+    const generatedPrompt = sanitizeToPrompt(generatedPromptRaw);
 
     // Validate that we got actual content
     if (!generatedPrompt) {
