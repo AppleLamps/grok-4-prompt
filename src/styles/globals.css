@@ -56,7 +56,7 @@
 /* Component styles */
 @layer components {
   .glass-card {
-    @apply bg-white/98 backdrop-blur-xl border border-premium-200/30 rounded-3xl shadow-premium relative;
+    @apply bg-white/[0.98] backdrop-blur-xl border border-premium-200/30 rounded-3xl shadow-premium relative;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
