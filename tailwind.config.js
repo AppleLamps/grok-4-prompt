@@ -44,6 +44,11 @@ module.exports = {
         'button': '0 8px 16px rgba(73, 80, 87, 0.2), 0 4px 8px rgba(73, 80, 87, 0.1)',
         'button-hover': '0 12px 24px rgba(73, 80, 87, 0.25), 0 6px 12px rgba(73, 80, 87, 0.15)',
       },
+
+	      borderWidth: {
+	        '3': '3px',
+	      },
+
       backdropBlur: {
         'xs': '2px',
       },
