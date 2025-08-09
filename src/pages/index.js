@@ -51,6 +51,41 @@ const TrashIcon = ({ className }) => (
   </svg>
 );
 
+const MicIcon = ({ className = '' }) => (
+  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="9" y="2" width="6" height="12" rx="3"/>
+    <path d="M5 10a7 7 0 0 0 14 0"/>
+    <line x1="12" y1="19" x2="12" y2="22"/>
+    <line x1="8" y1="22" x2="16" y2="22"/>
+  </svg>
+);
+
+const StopIcon = ({ className = '' }) => (
+  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="6" y="6" width="12" height="12" rx="2"/>
+  </svg>
+);
+
+const StarIcon = ({ className = '' }) => (
+  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+  </svg>
+);
+
+const StarSolidIcon = ({ className = '' }) => (
+  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77 5.82 21.02 7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </svg>
+);
+
+const HistoryIcon = ({ className = '' }) => (
+  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="1 4 1 10 7 10"/>
+    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+    <polyline points="12 7 12 12 15 15"/>
+  </svg>
+);
+
 // --- Help Modal Component ---
 const HelpModal = ({ isOpen, onClose }) => {
   useEffect(() => {
@@ -119,6 +154,74 @@ const HelpModal = ({ isOpen, onClose }) => {
   );
 };
 
+// --- History Modal ---
+const HistoryModal = ({ isOpen, onClose, entries, onToggleFav, onLoad, onCopy, onDelete, onClear }) => {
+  useEffect(() => {
+    const handleEscape = (e) => e.key === 'Escape' && onClose();
+    if (isOpen) document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const sorted = [...entries].sort((a, b) => Number(b.fav) - Number(a.fav) || b.id - a.id);
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content max-w-3xl w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-2xl font-bold text-premium-100">History</h3>
+          <div className="flex gap-2">
+            {!!entries.length && (
+              <button onClick={onClear} className="px-3 py-2 text-sm rounded-lg bg-premium-800/60 border border-premium-700 hover:bg-premium-700/70 text-premium-300">Clear all</button>
+            )}
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-premium-700 transition-colors" aria-label="Close history">
+              <CloseIcon />
+            </button>
+          </div>
+        </div>
+        {!sorted.length ? (
+          <p className="text-premium-400">No history yet. Generate a prompt to see it here.</p>
+        ) : (
+          <div className="space-y-3 max-h-[65vh] overflow-auto pr-1">
+            {sorted.map((item) => (
+              <div key={item.id} className="bg-premium-900/60 border border-premium-700 rounded-xl p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="text-xs text-premium-500">
+                    {new Date(item.id).toLocaleString()}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => onToggleFav(item.id)} className={`w-9 h-9 flex items-center justify-center rounded-lg border ${item.fav ? 'bg-amber-500/90 border-amber-400 text-white' : 'bg-premium-800/50 border-premium-700 text-premium-300'} hover:opacity-90`} aria-label="Toggle favorite">
+                      {item.fav ? <StarSolidIcon /> : <StarIcon />}
+                    </button>
+                    <button onClick={() => onLoad(item)} className="w-9 h-9 flex items-center justify-center rounded-lg border bg-premium-800/50 border-premium-700 text-premium-300 hover:bg-premium-700/70" aria-label="Load into editor">↺</button>
+                    <button onClick={() => onCopy(item.prompt)} className="w-9 h-9 flex items-center justify-center rounded-lg border bg-premium-800/50 border-premium-700 text-premium-300 hover:bg-premium-700/70" aria-label="Copy prompt"><CopyIcon /></button>
+                    <button onClick={() => onDelete(item.id)} className="w-9 h-9 flex items-center justify-center rounded-lg border bg-red-500/20 border-red-600 text-red-200 hover:bg-red-500/30" aria-label="Delete"><TrashIcon /></button>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                  <div className="md:col-span-1">
+                    <div className="text-premium-400 mb-1">Idea</div>
+                    <div className="text-premium-200/90 whitespace-pre-wrap line-clamp-4">{item.idea || '—'}</div>
+                  </div>
+                  <div className="md:col-span-1">
+                    <div className="text-premium-400 mb-1">Directions</div>
+                    <div className="text-premium-200/90 whitespace-pre-wrap line-clamp-4">{item.directions || '—'}</div>
+                  </div>
+                  <div className="md:col-span-1">
+                    <div className="text-premium-400 mb-1">Prompt</div>
+                    <div className="text-premium-100 whitespace-pre-wrap line-clamp-4">{item.prompt}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function Home() {
   const [idea, setIdea] = useState('');
   const [directions, setDirections] = useState('');
@@ -132,10 +235,29 @@ export default function Home() {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [dictatingTarget, setDictatingTarget] = useState(null); // 'idea' | 'directions' | null
+  const recognitionRef = typeof window !== 'undefined' ? { current: null } : { current: null };
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Load history on mount
+  useEffect(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('pg_history') || '[]') : [];
+      if (Array.isArray(saved)) setHistory(saved);
+    } catch {}
+  }, []);
+
+  // Persist history
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pg_history', JSON.stringify(history));
+    }
+  }, [history]);
 
   // Background parallax driven by cursor/tilt
   useEffect(() => {
@@ -260,6 +382,8 @@ export default function Home() {
       }
       setGeneratedPrompt(data.prompt);
       setShowOutput(true);
+      // Save to history (cap 100 entries)
+      setHistory((h) => [{ id: Date.now(), idea, directions, prompt: data.prompt, fav: false }, ...h].slice(0, 100));
       setTimeout(() => {
         document.getElementById('output-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
@@ -289,6 +413,68 @@ export default function Home() {
       handleSubmit(e);
     }
   }, [handleSubmit, isLoading]);
+
+  // Voice to prompt (Web Speech) for specific target
+  const toggleDictation = useCallback((target) => {
+    try {
+      const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+      if (!SR) {
+        setError('Speech recognition is not supported in this browser.');
+        return;
+      }
+      // Stop if already running
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+        setDictatingTarget(null);
+        return;
+      }
+      const rec = new SR();
+      recognitionRef.current = rec;
+      rec.lang = 'en-US';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.onstart = () => setDictatingTarget(target);
+      rec.onend = () => { setDictatingTarget(null); recognitionRef.current = null; };
+      rec.onerror = (ev) => { console.warn('Speech error', ev.error); setDictatingTarget(null); recognitionRef.current = null; };
+      rec.onresult = (ev) => {
+        const transcript = ev.results?.[0]?.[0]?.transcript || '';
+        if (!transcript) return;
+        if (target === 'idea') {
+          setIdea((v) => (v ? v + ' ' : '') + transcript);
+        } else if (target === 'directions') {
+          setDirections((v) => (v ? v + ' ' : '') + transcript);
+        }
+      };
+      rec.start();
+    } catch (err) {
+      console.error('Speech init failed', err);
+      setError('Failed to start voice input.');
+    }
+  }, []);
+
+  const toggleFavorite = useCallback((id) => {
+    setHistory((h) => h.map((e) => (e.id === id ? { ...e, fav: !e.fav } : e)));
+  }, []);
+
+  const loadEntry = useCallback((entry) => {
+    setIdea(entry.idea || '');
+    setDirections(entry.directions || '');
+    setShowHistory(false);
+    document.getElementById('idea')?.focus();
+  }, []);
+
+  const copyPrompt = useCallback(async (text) => {
+    try { await navigator.clipboard.writeText(text); } catch {}
+  }, []);
+
+  const deleteEntry = useCallback((id) => {
+    setHistory((h) => h.filter((e) => e.id !== id));
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    setHistory([]);
+  }, []);
 
   return (
     <>
@@ -328,12 +514,22 @@ export default function Home() {
               <form onSubmit={handleSubmit} className="space-y-6 mb-10" onKeyDown={handleKeyDown}>
                 <div>
                   <label htmlFor="idea" className="label-text">Your Idea</label>
-                  <textarea id="idea" value={idea} onChange={(e) => setIdea(e.target.value)} className="input-field min-h-[120px]" placeholder="A futuristic city skyline at dusk..." rows={4} />
+                  <div className="relative">
+                    <textarea id="idea" value={idea} onChange={(e) => setIdea(e.target.value)} className="input-field min-h-[120px] pr-12" placeholder="A futuristic city skyline at dusk..." rows={4} />
+                    <button type="button" onClick={() => toggleDictation('idea')} className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'idea' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`} aria-label="Voice input for idea">
+                      {dictatingTarget === 'idea' ? <StopIcon /> : <MicIcon />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label htmlFor="directions" className="label-text">Additional Directions <span className="optional-text">(optional)</span></label>
-                  <textarea id="directions" value={directions} onChange={(e) => setDirections(e.target.value)} className="input-field min-h-[100px]" placeholder="Style: cinematic, cyberpunk. Mood: mysterious, awe-inspiring..." rows={3} />
+                  <div className="relative">
+                    <textarea id="directions" value={directions} onChange={(e) => setDirections(e.target.value)} className="input-field min-h-[100px] pr-12" placeholder="Style: cinematic, cyberpunk. Mood: mysterious, awe-inspiring..." rows={3} />
+                    <button type="button" onClick={() => toggleDictation('directions')} className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'directions' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`} aria-label="Voice input for directions">
+                      {dictatingTarget === 'directions' ? <StopIcon /> : <MicIcon />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -420,7 +616,20 @@ export default function Home() {
       <button onClick={() => setShowHelp(true)} className="help-button animate-float" aria-label="Open help">
         <HelpIcon className="w-5 h-5" />
       </button>
+      <button onClick={() => setShowHistory(true)} className="history-button animate-float" aria-label="Open history">
+        <HistoryIcon className="w-5 h-5" />
+      </button>
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      <HistoryModal
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        entries={history}
+        onToggleFav={toggleFavorite}
+        onLoad={loadEntry}
+        onCopy={copyPrompt}
+        onDelete={deleteEntry}
+        onClear={clearHistory}
+      />
     </>
   );
 }

@@ -289,6 +289,10 @@
     @apply fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-floating bg-premium-800/50 backdrop-blur-lg text-white flex items-center justify-center cursor-pointer z-50 border border-premium-700 hover:bg-accent/80 transition-all;
   }
 
+  .history-button {
+    @apply fixed bottom-24 right-6 w-14 h-14 rounded-full shadow-floating bg-premium-800/50 backdrop-blur-lg text-white flex items-center justify-center cursor-pointer z-50 border border-premium-700 hover:bg-premium-700/80 transition-all;
+  }
+
   .modal-overlay {
     @apply fixed inset-0 bg-premium-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-opacity duration-300;
     animation: fadeIn 0.3s ease-out forwards;
