@@ -137,6 +137,56 @@ export default function Home() {
     setMounted(true);
   }, []);
 
+  // Background parallax driven by cursor/tilt
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+    let rafId = 0;
+    let targetX = 0;
+    let targetY = 0;
+
+    const animate = () => {
+      // ease towards target for smoothness
+      const currentX = parseFloat(getComputedStyle(root).getPropertyValue('--parallaxX') || '0');
+      const currentY = parseFloat(getComputedStyle(root).getPropertyValue('--parallaxY') || '0');
+      const nextX = currentX + (targetX - currentX) * 0.08;
+      const nextY = currentY + (targetY - currentY) * 0.08;
+      root.style.setProperty('--parallaxX', String(nextX));
+      root.style.setProperty('--parallaxY', String(nextY));
+      rafId = requestAnimationFrame(animate);
+    };
+
+    const handlePointer = (e) => {
+      const { innerWidth, innerHeight } = window;
+      const nx = (e.clientX / innerWidth) * 2 - 1; // [-1, 1]
+      const ny = (e.clientY / innerHeight) * 2 - 1;
+      targetX = nx;
+      targetY = ny;
+    };
+
+    const handleOrientation = (e) => {
+      // gamma: left-right (-90, 90), beta: front-back (-180, 180)
+      const nx = Math.max(-1, Math.min(1, (e.gamma || 0) / 45));
+      const ny = Math.max(-1, Math.min(1, (e.beta || 0) / 90));
+      targetX = nx;
+      targetY = ny;
+    };
+
+    // Respect reduced motion
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (!reduced.matches) {
+      window.addEventListener('pointermove', handlePointer, { passive: true });
+      window.addEventListener('deviceorientation', handleOrientation, { passive: true });
+      rafId = requestAnimationFrame(animate);
+    }
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointer);
+      window.removeEventListener('deviceorientation', handleOrientation);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
+
   const handleImageUpload = useCallback((file) => {
     if (!file || !file.type.startsWith('image/')) {
       setError('Please upload a valid image file.');
