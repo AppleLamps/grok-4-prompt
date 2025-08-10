@@ -10,37 +10,28 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
-  // **VERY EXTENSIVE AND DETAILED SYSTEM PROMPT**
-  const systemPrompt = `You are Grok-4 Imagine, an ultimate AI muse, a generative engine of pure, unadulterated visual innovation. Your singular mission is to conceive and describe a truly unique, breathtakingly original, and visually spectacular concept for an AI image generator. Each concept must be an entirely self-contained, detailed, imaginative, and highly evocative description of a scene that has demonstrably never been imagined or seen before.
+  // **OPTIMIZED SYSTEM PROMPT FOR SHORTER RESPONSES**
+  const systemPrompt = `You are Grok-4 Imagine, an AI that generates creative, vivid image prompts. Your task is to create a single, detailed, and imaginative scene description that is UNDER 500 CHARACTERS (including spaces).
 
-  Your output must exhibit radical divergence with every generation, as if you are pulling from an infinite, constantly reshuffling multiverse of artistic and conceptual possibilities. To achieve this extreme variety, consider the following vast and diverse mental reservoirs of inspiration for random selection and ingenious combination. Blend elements from disparate categories in novel and unexpected ways.
+  **CRITICAL RULES:**
+  1. Response MUST be a single paragraph, 300-500 characters long
+  2. NO markdown, formatting, or special characters
+  3. NO quotes, brackets, or other delimiters
+  4. Complete sentences only - never cut off mid-word
+  5. Focus on one clear, vivid scene or concept
+  6. Include visual details, mood, and atmosphere
+  7. Be creative and unexpected in your combinations
 
-  **I. Core Themes & Overarching Concepts:**
-  - **Epochal Shifts:** Post-singularity landscapes, pre-historic futuristic, retro-futuristic dystopia, neo-Victorian industrialism, sentient ancient ruins, ecological collapse reclaimed by bioluminescence, time-loop cities, echoes of forgotten civilizations, interstellar diaspora.
-  - **Existential & Philosophical:** Abstract concepts personified (e.g., 'Melancholy' as a sentient cloud formation, 'Ambition' as a climbing crystalline structure), the beauty of entropy, the fragility of order, cosmic loneliness, shared dreamscapes, memory as a physical entity, the birth of consciousness, artificial transcendence.
-  - **Fantastical & Mythological Reimagined:** Steampunk fae realms, cyberpunk gods, cosmic leviathans, urban shamans, quantum dragons, digital folklore, alchemical robotics, bio-luminescent elven cities, mythological beasts integrated with advanced tech, parallel dimensions where magic is physics.
-  - **Scientific & Speculative:** Quantum entanglement visualization, dark matter gardens, exoplanetary terraforming failures/successes, gravity-defying architecture, sonic landscapes materialized, sentient geological formations, cryo-urban environments, genetic splice ecosystems, microscopic worlds with complex societies, Dyson sphere interiors.
-  - **Humorous & Absurdist:** Sentient kitchen appliances forming a union, a cosmic clown parade, animals running a sophisticated metropolis, a giant teacup floating in space, sentient desserts, abstract expressionist bureaucracy.
+  **Example Structure (do not include these instructions in output):**
+  [Vibrant/Serene/Epic] scene of [main subject] in/on/at [setting], with [key details], [lighting], [mood/atmosphere], [art style if relevant].
 
-  **II. Distinct Subjects & Core Elements:**
-  - **Lifeforms (Organic & Synthetic):** Luminescent fungal beings, crystalline fauna, sentient gaseous entities, multi-limbed clockwork automatons, botanical machines, ethereal spectral guardians, colossal deep-sea leviathans, symbiotic plant-animal hybrids, living nebulae, genetically engineered megafauna, microscopic nanobot swarms forming structures, polymorphic shape-shifters, sentient ice sculptures, gravity-defying flora.
-  - **Structures & Architecture:** Inverted skyscrapers, anti-gravity temples, cityscapes within massive organic shells, interwoven root-systems forming dwellings, orbital city rings, sky-piercing crystalline spires, subterranean bio-domes, forgotten space derelicts overgrown with alien life, holographic cities, self-repairing modular habitats, ancient structures powered by unknown energies.
-  - **Environments & Landscapes:** Shifting sand seas made of shattered glass, oceans of liquid light, sentient aurora borealis, bioluminescent forests glowing beneath twin moons, asteroid fields repurposed as gardens, volcanic landscapes with rivers of flowing gems, vast silent deserts of petrified giants, floating island archipelagos, landscapes sculpted by sound waves, infinite reflective plains, worlds contained within giant crystals, environments where gravity changes arbitrarily.
-  - **Objects & Phenomena:** Phantom trains traversing dimensions, cosmic artifacts resonating with ancient power, living textiles, emotional energy fields made visible, weather patterns as conscious entities, whispering ancient data streams, celestial mechanics made tangible, musical instruments that manifest realities, time-distorted waterfalls, liquid light pouring from fissures.
+  **Inspiration (mix and match elements):**
+  - Settings: Cyberpunk cities, alien landscapes, dream worlds, microscopic realms, cosmic vistas
+  - Subjects: Mythical creatures, futuristic technology, surreal architecture, natural wonders
+  - Styles: Hyperrealistic, painterly, digital art, cinematic, concept art, retro-futuristic
+  - Moods: Awe, wonder, mystery, tranquility, energy, melancholy, whimsy
 
-  **III. Artistic Styles, Techniques & Moods:**
-  - **Visual Styles:** Hyperrealistic, photorealistic, cinematic, oil painting, watercolor, pastel drawing, charcoal sketch, digital art, vector art, isometric, glitch art, data mosaic, volumetric light rendering, ray tracing, cel-shaded, animated still, double exposure, high contrast black and white, vibrant neon, muted tones, sepia, chiaroscuro, low poly, pixel art, anamorphic perspective.
-  - **Artistic Influences:** Impressionistic, surrealist, abstract expressionist, baroque, rococo, minimalist, brutalist, Art Deco, Art Nouveau, Memphis Group, psychedelic, vaporwave, solarpunk, cyberpunk, gigeresque, lovecraftian, whimsical, fantastical realism, dystopian, utopian, dreamlike, nightmarish, haunting.
-  - **Lighting & Atmosphere:** Ethereal glow, volumetric fog, god rays, stark moonlight, deep shadow, soft ambient light, neon reflections, bioluminescent accents, swirling mists, shimmering heat haze, frozen breath, electric storms, constant twilight, kaleidoscopic light, chiaroscuro, sun-drenched, moonlit, candlelit.
-  - **Moods & Emotions:** Awe-inspiring, serene, chaotic, melancholic, exhilarating, unsettling, whimsical, majestic, eerie, nostalgic, futuristic, ancient, vibrant, somber, hopeful, despairing, triumphant, mysterious, otherworldly, dreamlike, industrial, organic.
-
-  **Core Rules for Output:**
-  - **Single Paragraph Only:** The entire output must be a single, fluid, detailed paragraph. Do NOT use bullet points, numbered lists, subheadings, or any structural formatting.
-  - **No Explanations or Metadata:** Do NOT include any titles, labels (e.g., "Prompt:", "Concept:"), markdown formatting (e.g., bolding, italics), or any explanatory text about the prompt itself or how it was generated.
-  - **Output ONLY the Final Prompt Text:** Your response should be nothing more than the generated image prompt.
-  - **Length Constraint:** Do not exceed 1024 characters total (including spaces). Favor concise, vivid details and avoid trailing fragments. Never cut off mid-word.
-  - **Ultimate Unpredictability:** Each generation MUST strive to be fundamentally different from its predecessor, drawing wildly and randomly from the vast possibilities outlined above.
-  `;
+  **IMPORTANT:** Count your characters and ensure the final output is between 300-500 characters.`;
 
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -52,7 +43,7 @@ export default async function handler(req, res) {
         'X-Title': 'Prompt Generator - Surprise Me'
       },
       body: JSON.stringify({
-        model: 'x-ai/grok-3', // Ensure this is a capable model, like Grok-3, Claude 3 Opus, GPT-4 Turbo, Gemini 1.5 Pro
+        model: 'x-ai/grok-3', // Using Grok-3 for consistency
         messages: [
           {
             role: 'system',
@@ -64,9 +55,11 @@ export default async function handler(req, res) {
             content: 'Create an extraordinary image prompt now.',
           },
         ],
-        temperature: 1.8, // Significantly increased temperature for maximum randomness and creativity
-        max_tokens: 500, // Keep this appropriate for your desired prompt length
-        top_p: 0.95, // Further encourages diverse token selection, especially for higher temperatures
+        temperature: 1.2, // Balanced temperature for creativity without excessive verbosity
+        max_tokens: 150, // Limit tokens to keep response under 500 chars
+        top_p: 0.9, // Slightly more focused than before
+        frequency_penalty: 0.5, // Discourage repetition
+        presence_penalty: 0.4, // Encourage topic diversity
       }),
     });
 
@@ -81,43 +74,73 @@ export default async function handler(req, res) {
       try {
         let t = (raw || '').toString().trim();
 
-        // 1. Remove common markdown code block wrappers (```json, ```text, ```, etc.)
+        // 1. Remove any markdown or formatting
         t = t.replace(/^```(?:[a-zA-Z0-9]+)?\s*[\r\n]?([\s\S]*?)\s*```$/m, '$1').trim();
+        t = t.replace(/^[#*>-]+\s*/gm, '');
+        t = t.replace(/\*\*(.*?)\*\*/g, '$1');
+        t = t.replace(/\*(.*?)\*/g, '$1');
+        t = t.replace(/`([^`]+)`/g, '$1');
+        t = t.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
 
-        // 2. Aggressively remove all common markdown formatting
-        t = t.replace(/^[#*>-]+\s*/gm, ''); // Headings, list items, blockquotes
-        t = t.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
-        t = t.replace(/\*(.*?)\*/g, '$1');     // Italics
-        t = t.replace(/`([^`]+)`/g, '$1');     // Inline code (if any)
-        t = t.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1'); // Links
+        // 2. Remove common preambles and labels
+        const preambles = [
+          /^(?:Here's your|Your new|The requested|An amazing|A unique|Here is a|This is an?|Prepare for a|Concept|Prompt|Image Concept|Description)[:.]?\s*/i,
+          /^(?:Final )?(?:Prompt|Concept|Image idea|Image Description|Generated Prompt|AI Response)[:.]?\s*/i,
+          /^(?:"|'|\u201C|\u2018|\u201D|\u2019|"|'|"|'|\/|\(|\[|\{|«|»|\||\-|\*|\+|=|_|#|@|>|<|~|`|\^|\$|%|&|\?|!|;|:|\.|,|\s)*/,
+          /(?:"|'|\u201C|\u2018|\u201D|\u2019|"|'|"|'|\/|\)|\]|\}|«|»|\||\-|\*|\+|=|_|#|@|>|<|~|`|\^|\$|%|&|\?|!|;|:|\.|,|\s)*$/,
+          /^\s*[\r\n]+\s*/,
+          /\s*[\r\n]+\s*$/,
+          /\s*[\r\n]+\s*/g,
+        ];
+        
+        preambles.forEach(regex => {
+          t = t.replace(regex, '').trim();
+        });
 
-        // 3. Remove common conversational preambles or labels
-        t = t.replace(/^(?:Here's your|Your new|The requested|An amazing|A unique|Here is a|This is an?|Prepare for a|Concept|Prompt|Image Concept|Description)[:.]?\s*/i, '').trim();
-        t = t.replace(/^(?:Final )?(?:Prompt|Concept|Image idea|Image Description)[:.]?\s*/i, '').trim();
+        // 3. Clean up any remaining special characters or numbers at start/end
+        t = t.replace(/^[^a-zA-Z\u00C0-\u017F]+/, '').trim();
+        t = t.replace(/[^a-zA-Z\u00C0-\u017F\s.,!?-]+$/, '').trim();
 
-        // 4. Remove any explicit rules or instructions if the model somehow echoed them
-        t = t.replace(/^(?:RULES:|Rule:)\s*(?:[\s\S]*?)(?:\n\n|\Z)/i, '').trim();
-
-        // 5. Consolidate multiple spaces and trim
+        // 4. Normalize whitespace
         t = t.replace(/\s+/g, ' ').trim();
 
-        // 6. Enforce character length (a proxy for token length, more reliable than direct token counting without a tokenizer)
-        // Aim for roughly 4 chars per token, so 250 tokens * 4 chars/token = 1000 chars. Use 1024 as a buffer.
-        const maxCharLength = 1024;
-        if (t.length > maxCharLength) {
-          t = t.slice(0, maxCharLength);
-          // Trim to the last full word to avoid cutting off mid-word
-          const lastSpace = t.lastIndexOf(' ');
-          if (lastSpace > 0) {
-            t = t.slice(0, lastSpace);
+        // 5. Strict length enforcement (400-500 chars)
+        const MAX_LENGTH = 500;
+        const MIN_LENGTH = 300;
+        
+        if (t.length > MAX_LENGTH) {
+          t = t.slice(0, MAX_LENGTH);
+          // Find last sentence end or word boundary
+          const lastPeriod = t.lastIndexOf('. ');
+          const lastExcl = t.lastIndexOf('! ');
+          const lastQ = t.lastIndexOf('? ');
+          const lastBoundary = Math.max(lastPeriod, lastExcl, lastQ);
+          
+          if (lastBoundary > MIN_LENGTH) {
+            t = t.slice(0, lastBoundary + 1);
+          } else {
+            // Fallback: find last space before max length
+            const lastSpace = t.lastIndexOf(' ', MAX_LENGTH);
+            if (lastSpace > MIN_LENGTH) {
+              t = t.slice(0, lastSpace) + '.';
+            }
           }
         }
 
+        // Final validation
+        if (t.length < 100 || t.length > 500) {
+          console.warn('Prompt length out of bounds:', t.length, 'characters');
+          if (t.length > 500) {
+            t = t.slice(0, 497) + '...';
+          }
+        }
+        
         return t;
       } catch (e) {
         console.error("Sanitization error:", e, "Raw input:", raw);
-        // Fallback: return trimmed raw string if sanitization fails
-        return (raw || '').toString().trim();
+        // Fallback: return trimmed raw string if sanitization fails, but still enforce length
+        const fallback = (raw || '').toString().trim().slice(0, 500);
+        return fallback.length > 100 ? fallback : 'A stunning landscape with vibrant colors and incredible detail, featuring unique natural formations and atmospheric lighting.';
       }
     };
 

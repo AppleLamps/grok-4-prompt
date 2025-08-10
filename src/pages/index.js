@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Head from 'next/head';
+import { compressImage, getImageDimensions } from '../utils/imageCompression';
 
 // --- Icon Components ---
 const CopyIcon = ({ className }) => (
@@ -236,6 +237,10 @@ export default function Home() {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState(0);
+  const [originalSize, setOriginalSize] = useState(0);
+  const [compressedSize, setCompressedSize] = useState(0);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [dictatingTarget, setDictatingTarget] = useState(null); // 'idea' | 'directions' | null
@@ -310,7 +315,7 @@ export default function Home() {
     };
   }, []);
 
-  const handleImageUpload = useCallback((file) => {
+  const handleImageUpload = useCallback(async (file) => {
     if (!file || !file.type.startsWith('image/')) {
       setError('Please upload a valid image file.');
       return;
@@ -322,12 +327,46 @@ export default function Home() {
     }
 
     setError('');
-    setUploadedImage(file);
-    
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => setImagePreview(e.target.result);
-    reader.readAsDataURL(file);
+    setOriginalSize(file.size);
+    setCompressedSize(0);
+    setIsCompressing(true);
+    setCompressionProgress(0);
+
+    try {
+      // Show a preview of the original image first
+      const previewReader = new FileReader();
+      previewReader.onload = (e) => setImagePreview(e.target.result);
+      previewReader.readAsDataURL(file);
+
+      // Compress the image
+      const compressedFile = await compressImage(file, {
+        onProgress: (progress) => {
+          setCompressionProgress(Math.round(progress));
+        },
+        // Adjust these values based on your needs
+        maxSizeMB: 1.5,
+        maxWidthOrHeight: 2000,
+        useWebWorker: true,
+        initialQuality: 0.8,
+      });
+
+      setCompressedSize(compressedFile.size);
+      setUploadedImage(compressedFile);
+      
+      // Update preview with compressed version
+      const reader = new FileReader();
+      reader.onload = (e) => setImagePreview(e.target.result);
+      reader.readAsDataURL(compressedFile);
+      
+    } catch (error) {
+      console.error('Error during image compression:', error);
+      // Fallback to original file if compression fails
+      setUploadedImage(file);
+      setError('Error compressing image. Using original file.');
+    } finally {
+      setIsCompressing(false);
+      setCompressionProgress(0);
+    }
   }, []);
 
   const handleImageRemove = useCallback(() => {
