@@ -61,7 +61,7 @@ export default async function handler(req, res) {
           {
             role: 'user',
             // Simple user prompt, as all guidance is in the system prompt
-            content: 'Generate a truly unique and visually striking image concept, drawing from your vast mental library.',
+            content: 'Create an extraordinary image prompt now.',
           },
         ],
         temperature: 1.8, // Significantly increased temperature for maximum randomness and creativity
