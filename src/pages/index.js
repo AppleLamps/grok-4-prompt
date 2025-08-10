@@ -696,8 +696,19 @@ export default function Home() {
               )}
             </main>
           </div>
-          <footer className="text-center pt-8">
+          <footer className="text-center pt-8 space-y-1">
             <p className="text-xs text-premium-500 font-medium">Powered by OpenRouter API – Model: x-ai/grok-4</p>
+            <p className="text-xs text-premium-500">
+              Created by @lamps_apple | follow on{' '}
+              <a 
+                href="https://x.com/lamps_apple" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-premium-400 transition-colors"
+              >
+                𝕏
+              </a>
+            </p>
           </footer>
         </div>
       </div>
