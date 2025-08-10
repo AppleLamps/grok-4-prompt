@@ -377,6 +377,10 @@ body {
 .footer {
     text-align: center;
     margin-top: 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .footer-text {
@@ -591,6 +595,10 @@ body {
     .output-content {
         background: rgba(33, 37, 41, 0.5);
         color: #e9ecef;
+    }
+    .footer-text {
+        color: #adb5bd;
+        opacity: 0.9;
     }
 }
 

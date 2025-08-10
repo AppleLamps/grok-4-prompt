@@ -227,6 +227,7 @@ export default function Home() {
   const [directions, setDirections] = useState('');
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSurpriseLoading, setIsSurpriseLoading] = useState(false);
   const [error, setError] = useState('');
   const [showOutput, setShowOutput] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -453,6 +454,37 @@ export default function Home() {
     }
   }, []);
 
+  const handleSurpriseMe = useCallback(async () => {
+    setIsSurpriseLoading(true);
+    setError('');
+    setShowOutput(false);
+    setIdea('');
+    setDirections('');
+
+    try {
+      const response = await fetch('/api/surprise', {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get a surprise prompt.');
+      }
+      const surprisePrompt = (data.prompt || '').toString();
+      setGeneratedPrompt(surprisePrompt);
+      setShowOutput(true);
+      setHistory((h) => [{ id: Date.now(), idea: 'Surprise Me', directions: '', prompt: surprisePrompt, fav: false }, ...h].slice(0, 100));
+      setTimeout(() => {
+        document.getElementById('output-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    } catch (err) {
+      console.error('Surprise Me error:', err);
+      setError(err.message || 'An unexpected error occurred.');
+      setShowOutput(true);
+    } finally {
+      setIsSurpriseLoading(false);
+    }
+  }, []);
+
   const toggleFavorite = useCallback((id) => {
     setHistory((h) => h.map((e) => (e.id === id ? { ...e, fav: !e.fav } : e)));
   }, []);
@@ -571,8 +603,26 @@ export default function Home() {
                   )}
                 </div>
 
-                <div>
-                  <button type="submit" disabled={isLoading || (!idea.trim() && !uploadedImage)} className={`premium-button ${isLoading ? 'loading' : ''}`}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={handleSurpriseMe}
+                    disabled={isLoading || isSurpriseLoading}
+                    className={`premium-button ${isSurpriseLoading ? 'loading' : ''}`}
+                  >
+                    {isSurpriseLoading ? (
+                      <div className="flex items-center justify-center">
+                        <div className="loading-spinner"></div>
+                      </div>
+                    ) : (
+                      'Surprise Me'
+                    )}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading || isSurpriseLoading || (!idea.trim() && !uploadedImage)}
+                    className={`premium-button ${isLoading ? 'loading' : ''}`}
+                  >
                     {isLoading ? (
                       <div className="flex items-center justify-center">
                         <div className="loading-spinner"></div>
