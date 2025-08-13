@@ -1,4 +1,4 @@
-import imageCompression from 'browser-image-compression';
+// Dynamic import to keep initial bundle smaller; load only when needed
 
 /**
  * Compresses an image file before upload
@@ -8,6 +8,7 @@ import imageCompression from 'browser-image-compression';
  */
 export const compressImage = async (imageFile, options = {}) => {
   try {
+    const imageCompression = (await import('browser-image-compression')).default;
     // Default compression options
     const defaultOptions = {
       maxSizeMB: 1, // Maximum file size in MB (after compression)

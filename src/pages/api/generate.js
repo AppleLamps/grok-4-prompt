@@ -161,7 +161,8 @@ OUTPUT FORMAT:
       max_tokens: 1000,
       top_p: 1,
       frequency_penalty: 0,
-      presence_penalty: 0
+      presence_penalty: 0,
+      usage: { include: true }
     };
 
     // Add user message with or without image
@@ -188,7 +189,9 @@ OUTPUT FORMAT:
       });
     }
 
-    // Make request to OpenRouter API
+    // Make request to OpenRouter API with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -197,8 +200,10 @@ OUTPUT FORMAT:
         'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000',
         'X-Title': 'Prompt Generator'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     // Check if the OpenRouter API request was successful
     if (!openRouterResponse.ok) {
@@ -270,6 +275,12 @@ OUTPUT FORMAT:
     console.error('API Route Error:', error);
 
     // Check for specific error types
+    if (error.name === 'AbortError') {
+      return res.status(504).json({
+        error: 'Gateway timeout',
+        message: 'The AI service took too long to respond. Please try again.'
+      });
+    }
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       return res.status(500).json({
         error: 'Network error',

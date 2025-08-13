@@ -34,6 +34,8 @@ export default async function handler(req, res) {
   **IMPORTANT:** Count your characters and ensure the final output is between 300-500 characters.`;
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -56,12 +58,15 @@ export default async function handler(req, res) {
           },
         ],
         temperature: 1.2, // Balanced temperature for creativity without excessive verbosity
-        max_tokens: 150, // Limit tokens to keep response under 500 chars
+        max_tokens: 140, // Slightly reduced for faster responses
         top_p: 0.9, // Slightly more focused than before
         frequency_penalty: 0.5, // Discourage repetition
         presence_penalty: 0.4, // Encourage topic diversity
+        usage: { include: true }
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -152,9 +157,12 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Empty or malformed response from model after processing.' });
     }
 
-    res.status(200).json({ prompt: generatedPrompt });
+    res.status(200).json({ prompt: generatedPrompt, usage: data.usage || null });
   } catch (error) {
     console.error('Surprise API Error:', error);
+    if (error.name === 'AbortError') {
+      return res.status(504).json({ error: 'The AI service timed out. Please try again.' });
+    }
     res.status(500).json({ error: 'Failed to generate a surprise prompt.', details: error.message });
   }
 }

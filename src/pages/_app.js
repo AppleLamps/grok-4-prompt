@@ -1,5 +1,8 @@
 import '@/styles/globals.css'
 import Head from 'next/head'
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'], display: 'swap' })
 
 export default function App({ Component, pageProps }) {
   return (
@@ -32,7 +35,9 @@ export default function App({ Component, pageProps }) {
         <meta name="theme-color" content="#495057" />
         <meta name="color-scheme" content="light dark" />
       </Head>
-      <Component {...pageProps} />
+      <div className={inter.className}>
+        <Component {...pageProps} />
+      </div>
     </>
   )
 }

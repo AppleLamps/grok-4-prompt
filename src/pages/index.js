@@ -1,6 +1,8 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Head from 'next/head';
-import { compressImage, getImageDimensions } from '../utils/imageCompression';
+import { compressImage } from '../utils/imageCompression';
+import useParallax from '../hooks/useParallax';
+import SpaceBackground from '../components/SpaceBackground';
 
 // --- Icon Components ---
 const CopyIcon = ({ className }) => (
@@ -265,55 +267,8 @@ export default function Home() {
     }
   }, [history]);
 
-  // Background parallax driven by cursor/tilt
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const root = document.documentElement;
-    let rafId = 0;
-    let targetX = 0;
-    let targetY = 0;
-
-    const animate = () => {
-      // ease towards target for smoothness
-      const currentX = parseFloat(getComputedStyle(root).getPropertyValue('--parallaxX') || '0');
-      const currentY = parseFloat(getComputedStyle(root).getPropertyValue('--parallaxY') || '0');
-      const nextX = currentX + (targetX - currentX) * 0.08;
-      const nextY = currentY + (targetY - currentY) * 0.08;
-      root.style.setProperty('--parallaxX', String(nextX));
-      root.style.setProperty('--parallaxY', String(nextY));
-      rafId = requestAnimationFrame(animate);
-    };
-
-    const handlePointer = (e) => {
-      const { innerWidth, innerHeight } = window;
-      const nx = (e.clientX / innerWidth) * 2 - 1; // [-1, 1]
-      const ny = (e.clientY / innerHeight) * 2 - 1;
-      targetX = nx;
-      targetY = ny;
-    };
-
-    const handleOrientation = (e) => {
-      // gamma: left-right (-90, 90), beta: front-back (-180, 180)
-      const nx = Math.max(-1, Math.min(1, (e.gamma || 0) / 45));
-      const ny = Math.max(-1, Math.min(1, (e.beta || 0) / 90));
-      targetX = nx;
-      targetY = ny;
-    };
-
-    // Respect reduced motion
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (!reduced.matches) {
-      window.addEventListener('pointermove', handlePointer, { passive: true });
-      window.addEventListener('deviceorientation', handleOrientation, { passive: true });
-      rafId = requestAnimationFrame(animate);
-    }
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointer);
-      window.removeEventListener('deviceorientation', handleOrientation);
-      cancelAnimationFrame(rafId);
-    };
-  }, []);
+  // Parallax
+  useParallax();
 
   const handleImageUpload = useCallback(async (file) => {
     if (!file || !file.type.startsWith('image/')) {
@@ -556,15 +511,7 @@ export default function Home() {
       </Head>
 
       {/* --- Animated Background --- */}
-      <div className="aurora-container">
-        <div className="aurora-bg"></div>
-        <div id="stars-1"></div>
-        <div id="stars-2"></div>
-        <div id="stars-3"></div>
-        <div className="shooting-star shooting-star-1"></div>
-        <div className="shooting-star shooting-star-2"></div>
-        <div className="shooting-star shooting-star-3"></div>
-      </div>
+      <SpaceBackground />
 
       <div className="min-h-screen py-8 px-4 sm:py-12 lg:px-8 relative z-10 flex items-center justify-center">
         <div className="max-w-4xl w-full mx-auto">
@@ -647,6 +594,7 @@ export default function Home() {
                     type="button"
                     onClick={handleSurpriseMe}
                     disabled={isLoading || isSurpriseLoading}
+                    aria-busy={isSurpriseLoading}
                     className={`premium-button ${isSurpriseLoading ? 'loading' : ''}`}
                   >
                     {isSurpriseLoading ? (
@@ -660,6 +608,7 @@ export default function Home() {
                   <button
                     type="submit"
                     disabled={isLoading || isSurpriseLoading || (!idea.trim() && !uploadedImage)}
+                    aria-busy={isLoading}
                     className={`premium-button ${isLoading ? 'loading' : ''}`}
                   >
                     {isLoading ? (
