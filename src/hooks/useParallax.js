@@ -20,7 +20,13 @@ export default function useParallax() {
     let targetX = 0;
     let targetY = 0;
 
-    const step = () => {
+    let lastUpdate = 0;
+    const step = (timestamp) => {
+      if (timestamp - lastUpdate < 16) {
+        rafId = requestAnimationFrame(step);
+        return;
+      }
+      lastUpdate = timestamp;
       currentX = currentX + (targetX - currentX) * 0.08;
       currentY = currentY + (targetY - currentY) * 0.08;
       root.style.setProperty('--parallaxX', String(currentX));

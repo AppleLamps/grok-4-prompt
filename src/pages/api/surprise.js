@@ -1,7 +1,21 @@
 // /pages/api/surprise.js
+import { RateLimiterMemory } from 'rate-limiter-flexible';
+
+const rateLimiter = new RateLimiterMemory({ points: 5, duration: 60 }); // 5 requests per minute
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Rate limiting - 5 requests per minute per IP
+  try {
+    await rateLimiter.consume(req.headers['x-forwarded-for'] || 'anonymous', 1);
+  } catch {
+    return res.status(429).json({ 
+      error: 'Too many requests', 
+      message: 'Please wait before trying again.' 
+    });
   }
 
   const apiKey = process.env.OPENROUTER_API_KEY;

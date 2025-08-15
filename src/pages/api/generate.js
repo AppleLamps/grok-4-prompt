@@ -4,6 +4,9 @@
 
 import { IncomingForm } from 'formidable';
 import fs from 'fs';
+import { RateLimiterMemory } from 'rate-limiter-flexible';
+
+const rateLimiter = new RateLimiterMemory({ points: 5, duration: 60 }); // 5 requests per minute
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -11,6 +14,16 @@ export default async function handler(req, res) {
     return res.status(405).json({
       error: 'Method not allowed',
       message: 'This endpoint only accepts POST requests'
+    });
+  }
+
+  // Rate limiting - 5 requests per minute per IP
+  try {
+    await rateLimiter.consume(req.headers['x-forwarded-for'] || 'anonymous', 1);
+  } catch {
+    return res.status(429).json({ 
+      error: 'Too many requests', 
+      message: 'Please wait before trying again.' 
     });
   }
 
