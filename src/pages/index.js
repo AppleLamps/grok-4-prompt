@@ -628,8 +628,11 @@ export default function Home() {
 
                 {/* New: Emily's JSON Mode toggle (styled switch) */}
                 <div className="flex items-center justify-end -mt-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-premium-200">Emily's JSON Mode</span>
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col text-right">
+                      <span className="text-sm font-medium text-premium-200">Emily's JSON Mode</span>
+                      <a href="https://x.com/IamEmily2050" target="_blank" rel="noopener noreferrer" className="text-xs text-premium-400 mt-1 hover:text-premium-300">𝕏 @IamEmily2050</a>
+                    </div>
                     <button
                       type="button"
                       role="switch"
