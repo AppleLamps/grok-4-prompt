@@ -260,6 +260,8 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [dictatingTarget, setDictatingTarget] = useState(null); // 'idea' | 'directions' | null
   const recognitionRef = typeof window !== 'undefined' ? { current: null } : { current: null };
+  // New: Emily's JSON Mode toggle state
+  const [isJsonMode, setIsJsonMode] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -379,6 +381,8 @@ export default function Home() {
       if (uploadedImage) {
         formData.append('image', uploadedImage);
       }
+      // New: pass JSON mode flag to API
+      formData.append('isJsonMode', String(isJsonMode));
 
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -388,10 +392,14 @@ export default function Home() {
       if (!response.ok) {
         throw new Error(data.message || 'Failed to generate prompt');
       }
-      setGeneratedPrompt(data.prompt);
+      // New: format output depending on mode
+      const displayPrompt = isJsonMode
+        ? JSON.stringify(data.prompt, null, 2)
+        : (data.prompt || '').toString();
+      setGeneratedPrompt(displayPrompt);
       setShowOutput(true);
-      // Save to history (cap 100 entries)
-      setHistory((h) => [{ id: Date.now(), idea, directions, prompt: data.prompt, fav: false }, ...h].slice(0, 100));
+      // Save to history (cap 100 entries) using the displayed prompt
+      setHistory((h) => [{ id: Date.now(), idea, directions, prompt: displayPrompt, fav: false }, ...h].slice(0, 100));
       setTimeout(() => {
         document.getElementById('output-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
@@ -402,7 +410,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [idea, directions, uploadedImage]);
+  }, [idea, directions, uploadedImage, isJsonMode]);
 
   const handleCopy = useCallback(async () => {
     if (!generatedPrompt || error) return;
@@ -618,6 +626,23 @@ export default function Home() {
                   )}
                 </div>
 
+                {/* New: Emily's JSON Mode toggle (styled switch) */}
+                <div className="flex items-center justify-end -mt-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-premium-200">Emily's JSON Mode</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isJsonMode}
+                      onClick={() => setIsJsonMode((v) => !v)}
+                      className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${isJsonMode ? 'bg-amber-400/90' : 'bg-premium-800/60 border border-premium-700'}`}
+                      aria-label="Toggle Emily's JSON Mode"
+                    >
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isJsonMode ? 'translate-x-7' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
                     type="button"
@@ -666,7 +691,8 @@ export default function Home() {
                       {error ? (
                         <div className="error-content">{error}</div>
                       ) : (
-                        <div className="text-base leading-relaxed text-premium-200 whitespace-pre-wrap">{generatedPrompt}</div>
+                        // New: render output in a code block to preserve formatting for JSON
+                        <pre className="text-base leading-relaxed text-premium-200 whitespace-pre-wrap overflow-auto"><code>{generatedPrompt}</code></pre>
                       )}
                     </div>
                   </div>

@@ -39,6 +39,8 @@ export default async function handler(req, res) {
     const idea = fields.idea ? fields.idea[0] : '';
     const directions = fields.directions ? fields.directions[0] : '';
     const imageFile = files.image ? files.image[0] : null;
+    // New: JSON mode flag from form fields (string -> boolean)
+    const isJsonMode = fields.isJsonMode?.[0] === 'true';
 
     // Validate that we have either an idea or an image
     if ((!idea || idea.trim().length === 0) && !imageFile) {
@@ -102,6 +104,93 @@ export default async function handler(req, res) {
       }
     };
 
+    // Helper: extract and parse JSON robustly from model output
+    const parseJsonStrictish = (raw) => {
+      if (!raw || typeof raw !== 'string') return null;
+      const tryParse = (s) => { try { return JSON.parse(s); } catch { return null; } };
+
+      let candidate = raw.trim().replace(/^\uFEFF/, '');
+
+      // 1) direct parse
+      let parsed = tryParse(candidate);
+      if (parsed) return parsed;
+
+      // 2) fenced code block
+      const fenceMatch = candidate.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      if (fenceMatch) {
+        candidate = fenceMatch[1].trim();
+        parsed = tryParse(candidate);
+        if (parsed) return parsed;
+      }
+
+      // 3) extract between first { and last }
+      const firstBrace = candidate.indexOf('{');
+      const lastBrace = candidate.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        candidate = candidate.slice(firstBrace, lastBrace + 1).trim();
+        parsed = tryParse(candidate);
+        if (parsed) return parsed;
+      }
+
+      // 4) normalize curly quotes and remove common artifacts
+      candidate = candidate.replace(/[\u201C\u201D]/g, '"');
+      candidate = candidate.replace(/\r\n/g, '\n');
+      candidate = candidate.replace(/,\s*([}\]])/g, '$1'); // trailing commas
+
+      parsed = tryParse(candidate);
+      if (parsed) return parsed;
+
+      // 5) attempt to close unbalanced braces by appending '}' a few times
+      for (let i = 1; i <= 6; i++) {
+        parsed = tryParse(candidate + '}'.repeat(i));
+        if (parsed) return parsed;
+      }
+
+      // 6) progressive trimming: try to find the largest prefix that parses (also try adding braces)
+      const maxAttempts = Math.min(candidate.length, 2000);
+      for (let end = candidate.length; end > Math.max(0, candidate.length - maxAttempts); end--) {
+        const snippet = candidate.slice(0, end).trim();
+        // skip obviously too short snippets
+        if (snippet.length < 10) break;
+        let p = tryParse(snippet);
+        if (p) return p;
+        // try closing braces
+        for (let j = 1; j <= 4; j++) {
+          p = tryParse(snippet + '}'.repeat(j));
+          if (p) return p;
+        }
+      }
+
+      // 7) as a last resort, try to remove last incomplete key/value pairs (naive regex)
+      // remove trailing '"key":' or '"key": <incomplete>' patterns
+      let fallback = candidate.replace(/\s*"[^"]+"\s*:\s*[^,}\]]+$/s, '').trim();
+      // ensure it ends with a brace before parsing attempts
+      if (!fallback.endsWith('}')) fallback += '}';
+      parsed = tryParse(fallback);
+      if (parsed) return parsed;
+
+      return null;
+    };
+
+    // New: JSON mode system prompt
+    const jsonSystemPrompt = `You are an expert-level prompt engineer for advanced text-to-image and text-to-video generative AI. Your task is to take a user's core idea and expand it into a highly detailed, structured JSON object that defines a complete creative shot.
+
+
+
+RULES:
+
+1.  Your entire output MUST be a single, raw JSON object. Do not wrap it in markdown, explanations, or any other text.
+
+2.  The JSON structure should be inspired by the user-provided examples, breaking down the concept into logical categories: 'title', 'prompt', 'negative_prompt', 'style', 'composition', 'lighting', 'subject', 'environment', 'camera', 'animation', 'audio', 'output', etc.
+
+3.  The top-level 'prompt' field is MANDATORY. It must contain a concise, powerful, and well-written text prompt (under 500 characters) that summarizes the detailed JSON structure.
+
+4.  Infer and add technical details where appropriate, such as camera lens (e.g., "50mm"), lighting setups (e.g., "soft top-down key"), and style notes (e.g., "surreal photoreal CGI").
+
+5.  If the user's idea is simple, creatively build upon it to generate a rich, detailed, and complete scene description within the JSON.
+
+6.  If animation is not specified, you can still include an 'animation' block with subtle, slow motions (like a gentle camera push or a "breathing" effect on an object) to add a dynamic quality to the concept.`;
+
 
     // Handle image processing if present
     let imageBase64 = null;
@@ -142,6 +231,10 @@ export default async function handler(req, res) {
         userPrompt += `\n\nAdditional directions: ${directions.trim()}`;
       }
     }
+    // Reinforce JSON-only output in user message when JSON mode is enabled
+    if (isJsonMode) {
+      userPrompt += `\n\nReturn only raw JSON. No markdown fences, no explanations, no extra text.`;
+    }
 
     // Prepare request body for OpenRouter API
     const requestBody = {
@@ -149,7 +242,7 @@ export default async function handler(req, res) {
       messages: [
         {
           role: 'system',
-          content: `You are Grok-4 Imagine, an AI that writes a single vivid image prompt under 500 characters (including spaces). Output exactly one paragraph.
+          content: isJsonMode ? jsonSystemPrompt : `You are Grok-4 Imagine, an AI that writes a single vivid image prompt under 500 characters (including spaces). Output exactly one paragraph.
 
 Rules:
 
@@ -271,11 +364,23 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
       });
     }
 
-    const generatedPromptRaw = data.choices[0].message.content?.toString().trim() || '';
-    const generatedPrompt = sanitizeToPrompt(generatedPromptRaw);
+    const rawContent = data.choices[0].message.content?.toString().trim() || '';
+    let finalPrompt;
+    if (isJsonMode) {
+      finalPrompt = parseJsonStrictish(rawContent);
+      if (!finalPrompt) {
+        console.error('AI returned invalid JSON:', rawContent);
+        return res.status(500).json({
+          error: 'Invalid response',
+          message: 'The AI service returned a malformed JSON response. Please try again.'
+        });
+      }
+    } else {
+      finalPrompt = sanitizeToPrompt(rawContent);
+    }
 
     // Validate that we got actual content
-    if (!generatedPrompt) {
+    if (!finalPrompt || (isJsonMode && typeof finalPrompt !== 'object')) {
       return res.status(500).json({
         error: 'Empty response',
         message: 'The AI service returned an empty response. Please try again with different input.'
@@ -285,7 +390,7 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
     // Return successful response
     return res.status(200).json({
       success: true,
-      prompt: generatedPrompt,
+      prompt: finalPrompt,
       usage: data.usage || null
     });
 
