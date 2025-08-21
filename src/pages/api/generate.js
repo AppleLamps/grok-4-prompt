@@ -4,6 +4,7 @@
 
 import { IncomingForm } from 'formidable';
 import fs from 'fs';
+import he from 'he'; // For HTML entity encoding - install via npm install he
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 
 const rateLimiter = new RateLimiterMemory({ points: 5, duration: 60 }); // 5 requests per minute
@@ -34,13 +35,14 @@ export default async function handler(req, res) {
   });
 
   try {
-    const [fields, files] = await form.parse(req);
+  const [fields, files] = await form.parse(req);
     
-    const idea = fields.idea ? fields.idea[0] : '';
-    const directions = fields.directions ? fields.directions[0] : '';
-    const imageFile = files.image ? files.image[0] : null;
-    // New: JSON mode flag from form fields (string -> boolean)
-    const isJsonMode = fields.isJsonMode?.[0] === 'true';
+  // Basic input sanitization to reduce prompt injection risks
+  const idea = fields.idea ? he.encode(fields.idea[0].trim()) : '';
+  const directions = fields.directions ? he.encode(fields.directions[0].trim()) : '';
+  const imageFile = files.image ? files.image[0] : null;
+  // New: JSON mode flag from form fields (string -> boolean)
+  const isJsonMode = fields.isJsonMode?.[0] === 'true';
 
     // Validate that we have either an idea or an image
     if ((!idea || idea.trim().length === 0) && !imageFile) {

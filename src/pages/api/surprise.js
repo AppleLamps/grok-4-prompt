@@ -1,7 +1,14 @@
 // /pages/api/surprise.js
-import { RateLimiterMemory } from 'rate-limiter-flexible';
+// Requires: rate-limiter-flexible (already in package.json)
+// Dependency check + safe import
+let RateLimiterMemory;
+try {
+  ({ RateLimiterMemory } = require('rate-limiter-flexible'));
+} catch (e) {
+  console.error('[Dependency missing] rate-limiter-flexible is required for rate limiting. Install with: npm install rate-limiter-flexible');
+}
 
-const rateLimiter = new RateLimiterMemory({ points: 5, duration: 60 }); // 5 requests per minute
+const rateLimiter = RateLimiterMemory ? new RateLimiterMemory({ points: 5, duration: 60 }) : null; // 5 requests per minute
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -10,7 +17,12 @@ export default async function handler(req, res) {
 
   // Rate limiting - 5 requests per minute per IP
   try {
-    await rateLimiter.consume(req.headers['x-forwarded-for'] || 'anonymous', 1);
+    if (rateLimiter) {
+      await rateLimiter.consume(req.headers['x-forwarded-for'] || 'anonymous', 1);
+    } else {
+      // If dependency is missing, log and proceed without rate limiting (best-effort fallback)
+      console.warn('Rate limiting disabled because rate-limiter-flexible is not available.');
+    }
   } catch {
     return res.status(429).json({ 
       error: 'Too many requests', 

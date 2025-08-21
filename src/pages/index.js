@@ -405,7 +405,13 @@ export default function Home() {
       }, 100);
     } catch (err) {
       console.error('Generation error:', err);
-      setError(err.message || 'An unexpected error occurred.');
+      let errorMessage = 'An unexpected error occurred.';
+      if (err.message && err.message.includes('429')) {
+        errorMessage = 'Too many requests. Please wait a minute.';
+      } else if (err.message && err.message.includes('500')) {
+        errorMessage = 'Server error. Try again later.';
+      }
+      setError(errorMessage);
       setShowOutput(true);
     } finally {
       setIsLoading(false);
