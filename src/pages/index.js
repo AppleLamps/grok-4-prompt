@@ -1,242 +1,94 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo, memo, useRef } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { compressImage } from '../utils/imageCompression';
 import useParallax from '../hooks/useParallax';
 import SpaceBackground from '../components/SpaceBackground';
+import { CopyIcon, CheckIcon, HelpIcon, HistoryIcon, MicIcon, StopIcon, UploadIcon, ImageIcon, TrashIcon } from '../components/IconComponents';
 
-// --- Icon Components ---
-const CopyIcon = ({ className }) => (
-  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <title>Copy to clipboard</title>
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-  </svg>
-);
+// Lazy load modals for better performance
+const HelpModal = dynamic(() => import('../components/HelpModal'), {
+  ssr: false,
+  loading: () => null
+});
 
-const CheckIcon = ({ className }) => (
-  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <title>Copied</title>
-    <polyline points="20,6 9,17 4,12"></polyline>
-  </svg>
-);
+const HistoryModal = dynamic(() => import('../components/HistoryModal'), {
+  ssr: false,
+  loading: () => null
+});
 
-const HelpIcon = ({ className = "" }) => (
-  <svg className={`${className} text-white`} width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <title>Help</title>
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
-  </svg>
-);
+// Memoized components for better performance
+const ImageUpload = memo(({ onImageUpload, imagePreview, onImageRemove, isCompressing, compressionProgress, originalSize, compressedSize }) => {
+  const [isDragOver, setIsDragOver] = useState(false);
 
-const CloseIcon = ({ className }) => (
-  <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <title>Close</title>
-    <line x1="18" y1="6" x2="6" y2="18"></line>
-    <line x1="6" y1="6" x2="18" y2="18"></line>
-  </svg>
-);
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
 
-const UploadIcon = ({ className }) => (
-  <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <title>Upload</title>
-    <path d="M14.5 3a1 1 0 0 1 1 1v6h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h6V4a1 1 0 0 1 1-1h6z"/>
-  </svg>
-);
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
 
-const ImageIcon = ({ className }) => (
-  <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <title>Image</title>
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-    <circle cx="8.5" cy="8.5" r="1.5"/>
-    <path d="M21 15l-5-5L5 21"/>
-  </svg>
-);
-
-const TrashIcon = ({ className }) => (
-  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <title>Delete</title>
-    <polyline points="3,6 5,6 21,6"/>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-    <line x1="10" y1="11" x2="10" y2="17"/>
-    <line x1="14" y1="11" x2="14" y2="17"/>
-  </svg>
-);
-
-const MicIcon = ({ className = '' }) => (
-  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <title>Microphone</title>
-    <rect x="9" y="2" width="6" height="12" rx="3"/>
-    <path d="M5 10a7 7 0 0 0 14 0"/>
-    <line x1="12" y1="19" x2="12" y2="22"/>
-    <line x1="8" y1="22" x2="16" y2="22"/>
-  </svg>
-);
-
-const StopIcon = ({ className = '' }) => (
-  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <title>Stop</title>
-    <rect x="6" y="6" width="12" height="12" rx="2"/>
-  </svg>
-);
-
-const StarIcon = ({ className = '' }) => (
-  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <title>Favorite</title>
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-  </svg>
-);
-
-const StarSolidIcon = ({ className = '' }) => (
-  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <title>Favorited</title>
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77 5.82 21.02 7 14.14 2 9.27l6.91-1.01L12 2z"/>
-  </svg>
-);
-
-const HistoryIcon = ({ className = '' }) => (
-  <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <title>History</title>
-    <polyline points="1 4 1 10 7 10"/>
-    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
-    <polyline points="12 7 12 12 15 15"/>
-  </svg>
-);
-
-// --- Help Modal Component ---
-const HelpModal = ({ isOpen, onClose }) => {
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      onImageUpload(files[0]);
     }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  }, [onImageUpload]);
 
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-    }
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) {
-    return null;
+  if (imagePreview) {
+    return (
+      <div className="image-preview-container">
+        <div className="image-preview">
+          <img src={imagePreview} alt="Upload preview" className="preview-image" loading="lazy" />
+          <button
+            type="button"
+            onClick={onImageRemove}
+            className="image-remove-btn"
+            aria-label="Remove image"
+          >
+            <TrashIcon />
+          </button>
+        </div>
+        <p className="text-sm text-premium-400 mt-2">
+          {compressedSize > 0 ? `${(originalSize / 1024 / 1024).toFixed(2)}MB → ${(compressedSize / 1024 / 1024).toFixed(2)}MB` : ''}
+        </p>
+      </div>
+    );
   }
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold text-premium-100">How to Use</h3>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-premium-700 transition-colors" aria-label="Close modal">
-            <CloseIcon />
-          </button>
+    <div
+      className={`image-upload-area ${isDragOver ? 'drag-over' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onClick={() => document.getElementById('image-input').click()}
+    >
+      <ImageIcon className="text-premium-400 mb-2" />
+      <p className="text-premium-300 mb-1">Drop an image here or click to upload</p>
+      <p className="text-sm text-premium-500">PNG, JPG, GIF up to 10MB</p>
+      {isCompressing && (
+        <div className="mt-2 text-sm text-premium-400">
+          Compressing... {compressionProgress}%
         </div>
-        <div className="space-y-4 text-premium-300 leading-relaxed">
-          <div>
-            <h4 className="font-semibold text-premium-100 mb-2">📝 Describe Your Idea</h4>
-            <p>Enter your creative concept or vision in the text area. You can also just upload an image without text!</p>
-          </div>
-          <div>
-            <h4 className="font-semibold text-premium-100 mb-2">🎯 Add Directions (Optional)</h4>
-            <p>Provide specific requirements, style preferences, or any other context to refine the prompt.</p>
-          </div>
-          <div>
-            <h4 className="font-semibold text-premium-100 mb-2">🖼️ Upload Image (Optional)</h4>
-            <p><strong>Image Only:</strong> Upload an image to recreate it as closely as possible.</p>
-            <p><strong>Image + Text:</strong> Upload an image with your idea/directions to modify or enhance it.</p>
-          </div>
-          <div>
-            <h4 className="font-semibold text-premium-100 mb-2">✨ Generate & Copy</h4>
-            <p>Click "Generate Prompt" to create your optimized prompt, then use the copy button to grab it.</p>
-          </div>
-          <div className="bg-premium-800/50 rounded-lg p-4 border border-premium-700">
-            <h4 className="font-semibold text-premium-100 mb-2">⌨️ Keyboard Shortcut</h4>
-            <p>Press <kbd>Ctrl + Enter</kbd> (or <kbd>Cmd + Enter</kbd> on Mac) to generate your prompt quickly!</p>
-          </div>
-        </div>
-      </div>
+      )}
+      <input
+        id="image-input"
+        type="file"
+        accept="image/*"
+        onChange={(e) => e.target.files[0] && onImageUpload(e.target.files[0])}
+        className="hidden"
+      />
     </div>
   );
-};
+});
 
-// --- History Modal ---
-const HistoryModal = ({ isOpen, onClose, entries, onToggleFav, onLoad, onCopy, onDelete, onClear }) => {
-  useEffect(() => {
-    const handleEscape = (e) => e.key === 'Escape' && onClose();
-    if (isOpen) document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  const sorted = [...entries].sort((a, b) => Number(b.fav) - Number(a.fav) || b.id - a.id);
-
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content max-w-3xl w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-2xl font-bold text-premium-100">History</h3>
-          <div className="flex gap-2">
-            {!!entries.length && (
-              <button onClick={onClear} className="px-3 py-2 text-sm rounded-lg bg-premium-800/60 border border-premium-700 hover:bg-premium-700/70 text-premium-300">Clear all</button>
-            )}
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-premium-700 transition-colors" aria-label="Close history">
-              <CloseIcon />
-            </button>
-          </div>
-        </div>
-        {!sorted.length ? (
-          <p className="text-premium-400">No history yet. Generate a prompt to see it here.</p>
-        ) : (
-          <div className="space-y-3 max-h-[65vh] overflow-auto pr-1">
-            {sorted.map((item) => (
-              <div key={item.id} className="bg-premium-900/60 border border-premium-700 rounded-xl p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="text-xs text-premium-500">
-                    {new Date(item.id).toLocaleString()}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => onToggleFav(item.id)} className={`w-9 h-9 flex items-center justify-center rounded-lg border ${item.fav ? 'bg-amber-500/90 border-amber-400 text-white' : 'bg-premium-800/50 border-premium-700 text-premium-300'} hover:opacity-90`} aria-label="Toggle favorite">
-                      {item.fav ? <StarSolidIcon /> : <StarIcon />}
-                    </button>
-                    <button onClick={() => onLoad(item)} className="w-9 h-9 flex items-center justify-center rounded-lg border bg-premium-800/50 border-premium-700 text-premium-300 hover:bg-premium-700/70" aria-label="Load into editor">↺</button>
-                    <button onClick={() => onCopy(item.prompt)} className="w-9 h-9 flex items-center justify-center rounded-lg border bg-premium-800/50 border-premium-700 text-premium-300 hover:bg-premium-700/70" aria-label="Copy prompt"><CopyIcon /></button>
-                    <button onClick={() => onDelete(item.id)} className="w-9 h-9 flex items-center justify-center rounded-lg border bg-red-500/20 border-red-600 text-red-200 hover:bg-red-500/30" aria-label="Delete"><TrashIcon /></button>
-                  </div>
-                </div>
-                <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                  <div className="md:col-span-1">
-                    <div className="text-premium-400 mb-1">Idea</div>
-                    <div className="text-premium-200/90 whitespace-pre-wrap line-clamp-4">{item.idea || '—'}</div>
-                  </div>
-                  <div className="md:col-span-1">
-                    <div className="text-premium-400 mb-1">Directions</div>
-                    <div className="text-premium-200/90 whitespace-pre-wrap line-clamp-4">{item.directions || '—'}</div>
-                  </div>
-                  <div className="md:col-span-1">
-                    <div className="text-premium-400 mb-1">Prompt</div>
-                    <div className="text-premium-100 whitespace-pre-wrap line-clamp-4">{item.prompt}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
+ImageUpload.displayName = 'ImageUpload';
 
 export default function Home() {
   const [idea, setIdea] = useState('');
@@ -251,17 +103,19 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [uploadedImage, setUploadedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [isDragOver, setIsDragOver] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [originalSize, setOriginalSize] = useState(0);
   const [compressedSize, setCompressedSize] = useState(0);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [dictatingTarget, setDictatingTarget] = useState(null); // 'idea' | 'directions' | null
-  const recognitionRef = typeof window !== 'undefined' ? { current: null } : { current: null };
-  // New: Emily's JSON Mode toggle state
+  const [dictatingTarget, setDictatingTarget] = useState(null);
   const [isJsonMode, setIsJsonMode] = useState(false);
+  const imageObjectUrlRef = useRef(null);
+  const generateAbortRef = useRef(null);
+
+  // Memoized values for better performance
+  const recognitionRef = useMemo(() => ({ current: null }), []);
 
   useEffect(() => {
     setMounted(true);
@@ -282,7 +136,7 @@ export default function Home() {
     }
   }, [history]);
 
-  // Parallax
+  // Parallax effect
   useParallax();
 
   const handleImageUpload = useCallback(async (file) => {
@@ -291,7 +145,7 @@ export default function Home() {
       return;
     }
     
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+    if (file.size > 10 * 1024 * 1024) {
       setError('Image file size must be less than 10MB.');
       return;
     }
@@ -303,17 +157,17 @@ export default function Home() {
     setCompressionProgress(0);
 
     try {
-      // Show a preview of the original image first
-      const previewReader = new FileReader();
-      previewReader.onload = (e) => setImagePreview(e.target.result);
-      previewReader.readAsDataURL(file);
+      // preview with object URL for lower memory
+      if (imageObjectUrlRef.current) {
+        URL.revokeObjectURL(imageObjectUrlRef.current);
+        imageObjectUrlRef.current = null;
+      }
+      const firstUrl = URL.createObjectURL(file);
+      imageObjectUrlRef.current = firstUrl;
+      setImagePreview(firstUrl);
 
-      // Compress the image
       const compressedFile = await compressImage(file, {
-        onProgress: (progress) => {
-          setCompressionProgress(Math.round(progress));
-        },
-        // Adjust these values based on your needs
+        onProgress: (progress) => setCompressionProgress(Math.round(progress)),
         maxSizeMB: 1.5,
         maxWidthOrHeight: 2000,
         useWebWorker: true,
@@ -322,15 +176,17 @@ export default function Home() {
 
       setCompressedSize(compressedFile.size);
       setUploadedImage(compressedFile);
-      
-      // Update preview with compressed version
-      const reader = new FileReader();
-      reader.onload = (e) => setImagePreview(e.target.result);
-      reader.readAsDataURL(compressedFile);
+      // update preview to compressed version
+      if (imageObjectUrlRef.current) {
+        URL.revokeObjectURL(imageObjectUrlRef.current);
+        imageObjectUrlRef.current = null;
+      }
+      const compressedUrl = URL.createObjectURL(compressedFile);
+      imageObjectUrlRef.current = compressedUrl;
+      setImagePreview(compressedUrl);
       
     } catch (error) {
       console.error('Error during image compression:', error);
-      // Fallback to original file if compression fails
       setUploadedImage(file);
       setError('Error compressing image. Using original file.');
     } finally {
@@ -342,26 +198,11 @@ export default function Home() {
   const handleImageRemove = useCallback(() => {
     setUploadedImage(null);
     setImagePreview(null);
-  }, []);
-
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  }, []);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleImageUpload(files[0]);
+    if (imageObjectUrlRef.current) {
+      URL.revokeObjectURL(imageObjectUrlRef.current);
+      imageObjectUrlRef.current = null;
     }
-  }, [handleImageUpload]);
+  }, []);
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
@@ -369,52 +210,82 @@ export default function Home() {
       setError('Please describe your idea or upload an image.');
       return;
     }
+    
+    // cancel in-flight request
+    if (generateAbortRef.current) {
+      generateAbortRef.current.abort();
+      generateAbortRef.current = null;
+    }
+    const controller = new AbortController();
+    generateAbortRef.current = controller;
+
     setIsLoading(true);
     setError('');
     setShowOutput(false);
+    
     try {
-      const formData = new FormData();
-      formData.append('idea', idea.trim());
-      if (directions.trim()) {
-        formData.append('directions', directions.trim());
-      }
+      let response;
       if (uploadedImage) {
+        const formData = new FormData();
+        formData.append('idea', idea.trim());
+        if (directions.trim()) {
+          formData.append('directions', directions.trim());
+        }
         formData.append('image', uploadedImage);
+        formData.append('isJsonMode', String(isJsonMode));
+        response = await fetch('/api/generate', { method: 'POST', body: formData, signal: controller.signal });
+      } else {
+        // JSON path for text-only
+        response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({ idea: idea.trim(), directions: directions.trim() || undefined, isJsonMode })
+        });
       }
-      // New: pass JSON mode flag to API
-      formData.append('isJsonMode', String(isJsonMode));
-
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await response.json();
+      
+      const ct = response.headers.get('content-type') || '';
+      let data;
+      if (ct.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        if (!response.ok) throw new Error(text || 'Failed to generate prompt');
+        // If OK but not JSON, wrap minimally
+        data = { prompt: text };
+      }
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to generate prompt');
+        throw new Error(data?.message || 'Failed to generate prompt');
       }
-      // New: format output depending on mode
+      
       const displayPrompt = isJsonMode
         ? JSON.stringify(data.prompt, null, 2)
         : (data.prompt || '').toString();
+      
       setGeneratedPrompt(displayPrompt);
       setShowOutput(true);
-      // Save to history (cap 100 entries) using the displayed prompt
-      setHistory((h) => [{ id: Date.now(), idea, directions, prompt: displayPrompt, fav: false }, ...h].slice(0, 100));
-      setTimeout(() => {
-        document.getElementById('output-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
+      
+  setHistory((h) => [{ 
+        id: Date.now(), 
+        idea, 
+        directions, 
+        prompt: displayPrompt, 
+        fav: false 
+  }, ...h].slice(0, 50));
     } catch (err) {
+  if (err.name === 'AbortError') return;
       console.error('Generation error:', err);
       let errorMessage = 'An unexpected error occurred.';
-      if (err.message && err.message.includes('429')) {
+      if (err.message?.includes('429')) {
         errorMessage = 'Too many requests. Please wait a minute.';
-      } else if (err.message && err.message.includes('500')) {
+      } else if (err.message?.includes('500')) {
         errorMessage = 'Server error. Try again later.';
       }
       setError(errorMessage);
       setShowOutput(true);
     } finally {
       setIsLoading(false);
+  if (generateAbortRef.current === controller) generateAbortRef.current = null;
     }
   }, [idea, directions, uploadedImage, isJsonMode]);
 
@@ -436,15 +307,12 @@ export default function Home() {
     }
   }, [handleSubmit, isLoading]);
 
-  // Voice to prompt (Web Speech) for specific target
   const toggleDictation = useCallback(async (target) => {
-    // Only run on client side
     if (typeof window === 'undefined') return;
     
     try {
       let SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       
-      // If native speech recognition is not available, try to load the polyfill
       if (!SR) {
         try {
           const { SpeechRecognition: PolyfillSpeechRecognition } = await import('web-speech-cognitive-services');
@@ -459,7 +327,6 @@ export default function Home() {
         return;
       }
       
-      // Stop if already running
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
@@ -473,8 +340,15 @@ export default function Home() {
       rec.interimResults = false;
       rec.maxAlternatives = 1;
       rec.onstart = () => setDictatingTarget(target);
-      rec.onend = () => { setDictatingTarget(null); recognitionRef.current = null; };
-      rec.onerror = (ev) => { console.warn('Speech error', ev.error); setDictatingTarget(null); recognitionRef.current = null; };
+      rec.onend = () => { 
+        setDictatingTarget(null); 
+        recognitionRef.current = null; 
+      };
+      rec.onerror = (ev) => { 
+        console.warn('Speech error', ev.error); 
+        setDictatingTarget(null); 
+        recognitionRef.current = null; 
+      };
       rec.onresult = (ev) => {
         const transcript = ev.results?.[0]?.[0]?.transcript || '';
         if (!transcript) return;
@@ -489,7 +363,7 @@ export default function Home() {
       console.error('Speech init failed', err);
       setError('Failed to start voice input.');
     }
-  }, []);
+  }, [recognitionRef]);
 
   const handleSurpriseMe = useCallback(async () => {
     setIsSurpriseLoading(true);
@@ -502,17 +376,28 @@ export default function Home() {
       const response = await fetch('/api/surprise', {
         method: 'POST',
       });
-      const data = await response.json();
+      const ct = response.headers.get('content-type') || '';
+      let data;
+      if (ct.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        if (!response.ok) throw new Error(text || 'Failed to get a surprise prompt.');
+        data = { prompt: text };
+      }
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to get a surprise prompt.');
+        throw new Error(data?.message || 'Failed to get a surprise prompt.');
       }
       const surprisePrompt = (data.prompt || '').toString();
       setGeneratedPrompt(surprisePrompt);
       setShowOutput(true);
-      setHistory((h) => [{ id: Date.now(), idea: 'Surprise Me', directions: '', prompt: surprisePrompt, fav: false }, ...h].slice(0, 100));
-      setTimeout(() => {
-        document.getElementById('output-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
+  setHistory((h) => [{ 
+        id: Date.now(), 
+        idea: 'Surprise Me', 
+        directions: '', 
+        prompt: surprisePrompt, 
+        fav: false 
+  }, ...h].slice(0, 50));
     } catch (err) {
       console.error('Surprise Me error:', err);
       setError(err.message || 'An unexpected error occurred.');
@@ -545,20 +430,43 @@ export default function Home() {
     setHistory([]);
   }, []);
 
+  // Smooth scroll when output appears
+  useEffect(() => {
+    if (showOutput) {
+      requestAnimationFrame(() => {
+        document.getElementById('output-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+  }, [showOutput]);
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (imageObjectUrlRef.current) {
+        URL.revokeObjectURL(imageObjectUrlRef.current);
+        imageObjectUrlRef.current = null;
+      }
+      if (generateAbortRef.current) {
+        generateAbortRef.current.abort();
+        generateAbortRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     <>
       <Head>
         <title>Grok 4 Imagine Prompt Generator</title>
         <meta name="description" content="Create professional, optimized prompts for AI image generation with our premium Grok 4 Imagine prompt generator." />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+        <link rel="preconnect" href="https://openrouter.ai" />
+        <link rel="dns-prefetch" href="https://openrouter.ai" />
       </Head>
 
-      {/* --- Animated Background --- */}
       <SpaceBackground />
-
+      
       <div className="min-h-screen py-8 px-4 sm:py-12 lg:px-8 relative z-10 flex items-center justify-center">
         <div className="max-w-4xl w-full mx-auto">
-          {/* Main Card */}
           <div className={`glass-ui p-8 sm:p-12 transition-opacity duration-1000 ${mounted ? 'opacity-100 animate-slide-in' : 'opacity-0'}`}>
             <header className="text-center mb-10">
               <div className={`${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
@@ -576,8 +484,21 @@ export default function Home() {
                 <div>
                   <label htmlFor="idea" className="label-text">Your Idea</label>
                   <div className="relative">
-                    <textarea id="idea" value={idea} onChange={(e) => setIdea(e.target.value)} className="input-field min-h-[120px] pr-12" placeholder="A futuristic city skyline at dusk..." rows={4} />
-                    <button type="button" onClick={() => toggleDictation('idea')} className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'idea' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`} aria-label="Voice input for idea">
+                    <textarea 
+                      id="idea" 
+                      value={idea} 
+                      onChange={(e) => setIdea(e.target.value)} 
+                      className="input-field min-h-[120px] pr-12" 
+                      placeholder="A futuristic city skyline at dusk..." 
+                      rows={4}
+                      maxLength={1000}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => toggleDictation('idea')} 
+                      className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'idea' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`} 
+                      aria-label="Voice input for idea"
+                    >
                       {dictatingTarget === 'idea' ? <StopIcon /> : <MicIcon />}
                     </button>
                   </div>
@@ -586,8 +507,21 @@ export default function Home() {
                 <div>
                   <label htmlFor="directions" className="label-text">Additional Directions <span className="optional-text">(optional)</span></label>
                   <div className="relative">
-                    <textarea id="directions" value={directions} onChange={(e) => setDirections(e.target.value)} className="input-field min-h-[100px] pr-12" placeholder="Style: cinematic, cyberpunk. Mood: mysterious, awe-inspiring..." rows={3} />
-                    <button type="button" onClick={() => toggleDictation('directions')} className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'directions' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`} aria-label="Voice input for directions">
+                    <textarea 
+                      id="directions" 
+                      value={directions} 
+                      onChange={(e) => setDirections(e.target.value)} 
+                      className="input-field min-h-[100px] pr-12" 
+                      placeholder="Style: cinematic, cyberpunk. Mood: mysterious, awe-inspiring..." 
+                      rows={3}
+                      maxLength={500}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => toggleDictation('directions')} 
+                      className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'directions' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`} 
+                      aria-label="Voice input for directions"
+                    >
                       {dictatingTarget === 'directions' ? <StopIcon /> : <MicIcon />}
                     </button>
                   </div>
@@ -595,48 +529,21 @@ export default function Home() {
 
                 <div>
                   <label className="label-text">Upload Image <span className="optional-text">(optional)</span></label>
-                  {!imagePreview ? (
-                    <div
-                      className={`image-upload-area ${isDragOver ? 'drag-over' : ''}`}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      onClick={() => document.getElementById('image-input').click()}
-                    >
-                      <ImageIcon className="text-premium-400 mb-2" />
-                      <p className="text-premium-300 mb-1">Drop an image here or click to upload</p>
-                      <p className="text-sm text-premium-500">PNG, JPG, GIF up to 10MB</p>
-                      <input
-                        id="image-input"
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => e.target.files[0] && handleImageUpload(e.target.files[0])}
-                        className="hidden"
-                      />
-                    </div>
-                  ) : (
-                    <div className="image-preview-container">
-                      <div className="image-preview">
-                        <img src={imagePreview} alt="Upload preview" className="preview-image" />
-                        <button
-                          type="button"
-                          onClick={handleImageRemove}
-                          className="image-remove-btn"
-                          aria-label="Remove image"
-                        >
-                          <TrashIcon />
-                        </button>
-                      </div>
-                      <p className="text-sm text-premium-400 mt-2">{uploadedImage?.name}</p>
-                    </div>
-                  )}
+                  <ImageUpload
+                    onImageUpload={handleImageUpload}
+                    imagePreview={imagePreview}
+                    onImageRemove={handleImageRemove}
+                    isCompressing={isCompressing}
+                    compressionProgress={compressionProgress}
+                    originalSize={originalSize}
+                    compressedSize={compressedSize}
+                  />
                 </div>
 
-                {/* New: Emily's JSON Mode toggle (styled switch) */}
                 <div className="flex items-center justify-end -mt-2">
                   <div className="flex items-center gap-4">
                     <div className="flex flex-col text-right">
-                      <span className="text-sm font-medium text-premium-200">Emily's JSON Mode</span>
+                      <span className="text-sm font-medium text-premium-200">Emily&apos;s JSON Mode</span>
                       <a href="https://x.com/IamEmily2050" target="_blank" rel="noopener noreferrer" className="text-xs text-premium-400 mt-1 hover:text-premium-300">𝕏 @IamEmily2050</a>
                     </div>
                     <button
@@ -645,7 +552,7 @@ export default function Home() {
                       aria-checked={isJsonMode}
                       onClick={() => setIsJsonMode((v) => !v)}
                       className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${isJsonMode ? 'bg-amber-400/90' : 'bg-premium-800/60 border border-premium-700'}`}
-                      aria-label="Toggle Emily's JSON Mode"
+                      aria-label="Toggle Emily&apos;s JSON Mode"
                     >
                       <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isJsonMode ? 'translate-x-7' : 'translate-x-1'}`} />
                     </button>
@@ -700,8 +607,9 @@ export default function Home() {
                       {error ? (
                         <div className="error-content">{error}</div>
                       ) : (
-                        // New: render output in a code block to preserve formatting for JSON
-                        <pre className="text-base leading-relaxed text-premium-200 whitespace-pre-wrap overflow-auto"><code>{generatedPrompt}</code></pre>
+                        <pre className="text-base leading-relaxed text-premium-200 whitespace-pre-wrap overflow-auto">
+                          <code>{generatedPrompt}</code>
+                        </pre>
                       )}
                     </div>
                   </div>
@@ -732,6 +640,7 @@ export default function Home() {
       <button onClick={() => setShowHistory(true)} className="history-button animate-float" aria-label="Open history">
         <HistoryIcon className="w-5 h-5" />
       </button>
+      
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
       <HistoryModal
         isOpen={showHistory}

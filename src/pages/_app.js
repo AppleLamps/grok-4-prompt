@@ -1,43 +1,37 @@
 import '@/styles/globals.css'
-import Head from 'next/head'
-import { Inter } from 'next/font/google'
-
-const inter = Inter({ subsets: ['latin'], display: 'swap' })
+import { useEffect } from 'react'
+import { cacheManager } from '@/utils/performance'
 
 export default function App({ Component, pageProps }) {
-  return (
-    <>
-      <Head>
-        <title>Prompt Generator - Transform Ideas into Perfect AI Prompts</title>
-        <meta name="description" content="A premium AI prompt generator powered by OpenRouter's Grok-4 model. Transform your ideas into detailed, optimized prompts for AI systems." />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="robots" content="index, follow" />
-        <meta name="author" content="Prompt Generator" />
+  useEffect(() => {
+    // Only run this in browser
+    if (typeof window !== 'undefined') {
+      if (process.env.NODE_ENV === 'production') {
+        // Only register SW in production
+        cacheManager.registerServiceWorker()
         
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content="Prompt Generator - Transform Ideas into Perfect AI Prompts" />
-        <meta property="og:description" content="A premium AI prompt generator powered by OpenRouter's Grok-4 model." />
-        <meta property="og:site_name" content="Prompt Generator" />
+        // Performance monitoring in production only
+        if (window.performanceMonitor) {
+          window.performanceMonitor.trackPageLoad()
+        }
         
-        {/* Twitter */}
-        <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:title" content="Prompt Generator - Transform Ideas into Perfect AI Prompts" />
-        <meta property="twitter:description" content="A premium AI prompt generator powered by OpenRouter's Grok-4 model." />
-        
-        {/* Favicon */}
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        
-        {/* Theme */}
-        <meta name="theme-color" content="#495057" />
-        <meta name="color-scheme" content="light dark" />
-      </Head>
-      <div className={inter.className}>
-        <Component {...pageProps} />
-      </div>
-    </>
-  )
+        // Image optimization in production only
+        if (window.imageOptimizer) {
+          window.imageOptimizer.lazyLoadImages()
+        }
+      } else {
+        // In development, aggressively clean up any caches/SWs that might interfere
+        setTimeout(async () => {
+          try {
+            await cacheManager.unregisterServiceWorkers?.()
+            await cacheManager.clearAllCaches?.()
+          } catch (e) {
+            // Silently ignore errors to avoid breaking development
+          }
+        }, 100) // Small delay to avoid race conditions
+      }
+    }
+  }, [])
+
+  return <Component {...pageProps} />
 }

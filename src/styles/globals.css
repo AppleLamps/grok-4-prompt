@@ -5,7 +5,7 @@
 
 @layer base {
   html {
-    @apply bg-premium-950;
+    @apply bg-gray-950;
     font-family: 'Inter', system-ui, sans-serif;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
@@ -13,7 +13,7 @@
   }
 
   body {
-    @apply bg-premium-950 text-premium-200 min-h-screen relative overflow-x-hidden;
+    @apply bg-gray-950 text-gray-200 min-h-screen relative overflow-x-hidden;
     /* This will be layered over by the aurora container */
   }
 
@@ -24,7 +24,7 @@
   }
 
   kbd {
-    @apply px-2 py-1 bg-premium-800 border border-premium-700 rounded-md text-xs font-sans;
+    @apply px-2 py-1 bg-gray-800 border border-gray-700 rounded-md text-xs font-sans;
   }
 }
 
@@ -155,7 +155,7 @@
 
   /* --- Main UI Card --- */
   .glass-ui {
-    @apply relative bg-premium-900/60 backdrop-blur-xl rounded-2xl shadow-premium;
+    @apply relative bg-gray-900/60 backdrop-blur-xl rounded-2xl shadow-premium;
     border: 1px solid transparent;
     background-clip: padding-box;
   }
@@ -175,19 +175,19 @@
 
   /* --- Other Components --- */
   .input-field {
-    @apply w-full px-4 py-3 border border-premium-700 rounded-lg bg-premium-900/70 text-premium-100 shadow-glass-inset placeholder-premium-500 transition-all duration-200;
+    @apply w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-900/70 text-gray-100 shadow-glass-inset placeholder-gray-500 transition-all duration-200;
   }
 
   .input-field:hover {
-    @apply border-premium-600;
+    @apply border-gray-600;
   }
 
   .input-field:focus {
-    @apply outline-none border-accent/80 bg-premium-800/50 ring-4 ring-accent/10;
+    @apply outline-none border-indigo-500/80 bg-gray-800/50 ring-4 ring-indigo-500/10;
   }
 
   .premium-button {
-    @apply w-full px-6 py-4 text-base font-semibold text-white rounded-lg transition-all duration-300 ease-in-out bg-accent hover:bg-accent-hover shadow-button;
+    @apply w-full px-6 py-4 text-base font-semibold text-white rounded-lg transition-all duration-300 ease-in-out bg-indigo-600 hover:bg-indigo-700 shadow-button;
   }
 
   .premium-button:hover:not(:disabled) {
@@ -196,7 +196,7 @@
   }
 
   .premium-button:disabled {
-    @apply bg-premium-700 text-premium-500 cursor-not-allowed shadow-none transform-none;
+    @apply bg-gray-700 text-gray-500 cursor-not-allowed shadow-none transform-none;
   }
 
   /* --- Loading golden shimmer for primary buttons --- */
@@ -232,35 +232,35 @@
   }
 
   .secondary-button {
-    @apply w-full px-6 py-4 text-base font-semibold text-premium-200 rounded-lg transition-all duration-300 ease-in-out bg-premium-800/70 border border-premium-700;
+    @apply w-full px-6 py-4 text-base font-semibold text-gray-200 rounded-lg transition-all duration-300 ease-in-out bg-gray-800/70 border border-gray-700;
   }
 
   .secondary-button:hover:not(:disabled) {
-    @apply bg-premium-700/80 border-premium-600 text-white transform-translate-y-[-2px];
+    @apply bg-gray-700/80 border-gray-600 text-white transform-translate-y-[-2px];
   }
 
   .output-card {
-    @apply bg-premium-900/50 backdrop-blur-sm border border-premium-800 rounded-lg overflow-hidden mt-8;
+    @apply bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-lg overflow-hidden mt-8;
   }
 
   .copy-button {
-    @apply flex items-center justify-center w-9 h-9 text-premium-400 bg-premium-800/60 rounded-lg border border-premium-700 hover:bg-premium-700 hover:text-white transition-all;
+    @apply flex items-center justify-center w-9 h-9 text-gray-400 bg-gray-800/60 rounded-lg border border-gray-700 hover:bg-gray-700 hover:text-white transition-all;
   }
 
   .copy-button.copied {
-    @apply bg-accent text-white border-accent;
+    @apply bg-indigo-600 text-white border-indigo-600;
   }
 
   .image-upload-area {
-    @apply w-full min-h-[120px] border-2 border-dashed border-premium-700 rounded-xl bg-premium-900/60 text-center p-6 cursor-pointer transition-all flex flex-col items-center justify-center hover:border-premium-600 hover:bg-premium-800/70;
+    @apply w-full min-h-[120px] border-2 border-dashed border-gray-700 rounded-xl bg-gray-900/60 text-center p-6 cursor-pointer transition-all flex flex-col items-center justify-center hover:border-gray-600 hover:bg-gray-800/70;
   }
 
   .image-upload-area.drag-over {
-    @apply border-accent bg-accent/10;
+    @apply border-indigo-500 bg-indigo-500/10;
   }
 
   .image-preview {
-    @apply relative inline-block rounded-xl overflow-hidden bg-premium-900/60 border border-premium-700;
+    @apply relative inline-block rounded-xl overflow-hidden bg-gray-900/60 border border-gray-700;
   }
 
   .preview-image {
@@ -272,11 +272,11 @@
   }
 
   .label-text {
-    @apply block text-sm font-semibold text-premium-200 mb-2;
+    @apply block text-sm font-semibold text-gray-200 mb-2;
   }
 
   .optional-text {
-    @apply text-premium-400 font-normal;
+    @apply text-gray-400 font-normal;
   }
 
   .error-content {
@@ -289,7 +289,7 @@
 
   .help-button,
   .history-button {
-    @apply fixed w-14 h-14 rounded-full shadow-floating bg-premium-800/50 backdrop-blur-lg text-white flex items-center justify-center cursor-pointer z-50 border border-premium-700 transition-all hover:bg-accent/80;
+    @apply fixed w-14 h-14 rounded-full shadow-floating bg-gray-800/50 backdrop-blur-lg text-white flex items-center justify-center cursor-pointer z-50 border border-gray-700 transition-all hover:bg-indigo-600/80;
   }
 
   .help-button {
@@ -301,12 +301,12 @@
   }
 
   .modal-overlay {
-    @apply fixed inset-0 bg-premium-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-opacity duration-300;
+    @apply fixed inset-0 bg-gray-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-opacity duration-300;
     animation: fadeIn 0.3s ease-out forwards;
   }
 
   .modal-content {
-    @apply relative w-full max-w-lg p-8 rounded-2xl bg-premium-900/80 border border-premium-700 shadow-premium;
+    @apply relative w-full max-w-lg p-8 rounded-2xl bg-gray-900/80 border border-gray-700 shadow-premium;
     animation: scaleIn 0.3s ease-out forwards;
   }
 
@@ -335,7 +335,7 @@
 
 @layer utilities {
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-br from-premium-100 to-premium-300;
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-gray-100 to-gray-300;
   }
 
   .text-glow {

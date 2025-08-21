@@ -9,6 +9,94 @@ import { RateLimiterMemory } from 'rate-limiter-flexible';
 
 const rateLimiter = new RateLimiterMemory({ points: 5, duration: 60 }); // 5 requests per minute
 
+// Helper to read a JSON body when bodyParser is disabled
+const readJsonBody = async (req) => {
+  if (req.body && typeof req.body === 'object') return req.body;
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const raw = Buffer.concat(chunks).toString('utf8');
+  try { return JSON.parse(raw); } catch { return {}; }
+};
+
+// Hoisted helpers so regex are compiled once per worker
+const sanitizeToPrompt = (raw) => {
+  try {
+    let t = (raw || '').toString().trim();
+    t = t.replace(/^```(?:[a-zA-Z0-9]+)?\s*[\r\n]?([\s\S]*?)\s*```$/m, '$1').trim();
+    if (t.includes('---')) {
+      const parts = t.split(/\n?---+\n?/g).map(p => p.trim()).filter(Boolean);
+      if (parts.length) t = parts[parts.length - 1];
+    }
+    const labelMatch = t.match(/(?:^|\n)\s*(?:final\s*)?prompt[^:]*:\s*/i);
+    if (labelMatch) {
+      t = t.slice(labelMatch.index + labelMatch[0].length).trim();
+    }
+    t = t
+      .replace(/^#+\s*/gm, '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/^[>\-\s]*\*/gm, '')
+      .replace(/^>\s*/gm, '');
+    t = t.replace(/\s+/g, ' ').trim();
+    if (t.length > 1024) {
+      t = t.slice(0, 1024);
+      const lastSpace = t.lastIndexOf(' ');
+      if (lastSpace > 0) t = t.slice(0, lastSpace);
+    }
+    return t;
+  } catch {
+    return (raw || '').toString().trim();
+  }
+};
+
+// Robust JSON extraction with fewer heavy attempts for perf
+const parseJsonStrictish = (raw) => {
+  if (!raw || typeof raw !== 'string') return null;
+  const tryParse = (s) => { try { return JSON.parse(s); } catch { return null; } };
+
+  let candidate = raw.trim().replace(/^\uFEFF/, '');
+  let parsed = tryParse(candidate);
+  if (parsed) return parsed;
+  const fenceMatch = candidate.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenceMatch) {
+    candidate = fenceMatch[1].trim();
+    parsed = tryParse(candidate);
+    if (parsed) return parsed;
+  }
+  const firstBrace = candidate.indexOf('{');
+  const lastBrace = candidate.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    candidate = candidate.slice(firstBrace, lastBrace + 1).trim();
+    parsed = tryParse(candidate);
+    if (parsed) return parsed;
+  }
+  candidate = candidate.replace(/[\u201C\u201D]/g, '"');
+  candidate = candidate.replace(/\r\n/g, '\n');
+  candidate = candidate.replace(/,\s*([}\]])/g, '$1');
+  parsed = tryParse(candidate);
+  if (parsed) return parsed;
+  for (let i = 1; i <= 6; i++) {
+    parsed = tryParse(candidate + '}'.repeat(i));
+    if (parsed) return parsed;
+  }
+  const maxAttempts = Math.min(candidate.length, 600);
+  for (let end = candidate.length; end > Math.max(0, candidate.length - maxAttempts); end--) {
+    const snippet = candidate.slice(0, end).trim();
+    if (snippet.length < 10) break;
+    let p = tryParse(snippet);
+    if (p) return p;
+    for (let j = 1; j <= 4; j++) {
+      p = tryParse(snippet + '}'.repeat(j));
+      if (p) return p;
+    }
+  }
+  let fallback = candidate.replace(/\s*"[^"]+"\s*:\s*[^,}\]]+$/s, '').trim();
+  if (!fallback.endsWith('}')) fallback += '}';
+  parsed = tryParse(fallback);
+  if (parsed) return parsed;
+  return null;
+};
+
 export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -28,24 +116,38 @@ export default async function handler(req, res) {
     });
   }
 
-  // Parse form data (including files)
-  const form = new IncomingForm({
-    maxFileSize: 10 * 1024 * 1024, // 10MB limit
-    keepExtensions: true,
-  });
+  // Decide parsing strategy: multipart only when needed
+  const isMultipart = (req.headers['content-type'] || '').includes('multipart/form-data');
 
   try {
-  const [fields, files] = await form.parse(req);
-    
-  // Basic input sanitization to reduce prompt injection risks
-  const idea = fields.idea ? he.encode(fields.idea[0].trim()) : '';
-  const directions = fields.directions ? he.encode(fields.directions[0].trim()) : '';
-  const imageFile = files.image ? files.image[0] : null;
-  // New: JSON mode flag from form fields (string -> boolean)
-  const isJsonMode = fields.isJsonMode?.[0] === 'true';
+    let fields = {};
+    let files = {};
+
+    if (isMultipart) {
+      const form = new IncomingForm({
+        maxFileSize: 10 * 1024 * 1024, // 10MB limit
+        keepExtensions: true,
+      });
+      [fields, files] = await form.parse(req);
+    } else {
+      const body = await readJsonBody(req);
+      fields = {
+        idea: [body.idea ?? ''],
+        directions: body.directions ? [body.directions] : [''],
+        isJsonMode: [String(body.isJsonMode ?? 'false')],
+      };
+      files = {};
+    }
+
+    // Basic input sanitization to reduce prompt injection risks
+    const idea = (fields.idea && fields.idea[0]) ? he.encode(fields.idea[0].trim()) : '';
+    const directions = (fields.directions && fields.directions[0]) ? he.encode(fields.directions[0].trim()) : '';
+    const imageFile = files.image ? files.image[0] : null;
+    // New: JSON mode flag from form fields (string -> boolean)
+    const isJsonMode = fields.isJsonMode?.[0] === 'true';
 
     // Validate that we have either an idea or an image
-    if ((!idea || idea.trim().length === 0) && !imageFile) {
+    if ((!idea || idea.length === 0) && !imageFile) {
       return res.status(400).json({
         error: 'Bad request',
         message: 'Either an "idea" or an image must be provided'
@@ -62,117 +164,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Ensure the response is a single, clean prompt without markdown/preambles
-    const sanitizeToPrompt = (raw) => {
-      try {
-        let t = (raw || '').toString().trim();
-
-        // Remove code fences if present
-        t = t.replace(/^```(?:[a-zA-Z0-9]+)?\s*[\r\n]?([\s\S]*?)\s*```$/m, '$1').trim();
-
-        // If there are horizontal rule separators, take the last section
-        if (t.includes('---')) {
-          const parts = t.split(/\n?---+\n?/g).map(p => p.trim()).filter(Boolean);
-          if (parts.length) t = parts[parts.length - 1];
-        }
-
-        // If there is a label like "Final Prompt:" or "Prompt for AI Image Generation:", take text after it
-        const labelMatch = t.match(/(?:^|\n)\s*(?:final\s*)?prompt[^:]*:\s*/i);
-        if (labelMatch) {
-          t = t.slice(labelMatch.index + labelMatch[0].length).trim();
-        }
-
-        // Strip common markdown decorations
-        t = t
-          .replace(/^#+\s*/gm, '')
-          .replace(/\*\*(.*?)\*\*/g, '$1')
-          .replace(/\*(.*?)\*/g, '$1')
-          .replace(/^[>\-\s]*\*/gm, '')
-          .replace(/^>\s*/gm, '');
-
-        // Collapse whitespace to single spaces
-        t = t.replace(/\s+/g, ' ').trim();
-
-        // Enforce 1024 characters max, cut at word boundary
-        if (t.length > 1024) {
-          t = t.slice(0, 1024);
-          const lastSpace = t.lastIndexOf(' ');
-          if (lastSpace > 0) t = t.slice(0, lastSpace);
-        }
-
-        return t;
-      } catch {
-        return (raw || '').toString().trim();
-      }
-    };
-
-    // Helper: extract and parse JSON robustly from model output
-    const parseJsonStrictish = (raw) => {
-      if (!raw || typeof raw !== 'string') return null;
-      const tryParse = (s) => { try { return JSON.parse(s); } catch { return null; } };
-
-      let candidate = raw.trim().replace(/^\uFEFF/, '');
-
-      // 1) direct parse
-      let parsed = tryParse(candidate);
-      if (parsed) return parsed;
-
-      // 2) fenced code block
-      const fenceMatch = candidate.match(/```(?:json)?\s*([\s\S]*?)```/i);
-      if (fenceMatch) {
-        candidate = fenceMatch[1].trim();
-        parsed = tryParse(candidate);
-        if (parsed) return parsed;
-      }
-
-      // 3) extract between first { and last }
-      const firstBrace = candidate.indexOf('{');
-      const lastBrace = candidate.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        candidate = candidate.slice(firstBrace, lastBrace + 1).trim();
-        parsed = tryParse(candidate);
-        if (parsed) return parsed;
-      }
-
-      // 4) normalize curly quotes and remove common artifacts
-      candidate = candidate.replace(/[\u201C\u201D]/g, '"');
-      candidate = candidate.replace(/\r\n/g, '\n');
-      candidate = candidate.replace(/,\s*([}\]])/g, '$1'); // trailing commas
-
-      parsed = tryParse(candidate);
-      if (parsed) return parsed;
-
-      // 5) attempt to close unbalanced braces by appending '}' a few times
-      for (let i = 1; i <= 6; i++) {
-        parsed = tryParse(candidate + '}'.repeat(i));
-        if (parsed) return parsed;
-      }
-
-      // 6) progressive trimming: try to find the largest prefix that parses (also try adding braces)
-      const maxAttempts = Math.min(candidate.length, 2000);
-      for (let end = candidate.length; end > Math.max(0, candidate.length - maxAttempts); end--) {
-        const snippet = candidate.slice(0, end).trim();
-        // skip obviously too short snippets
-        if (snippet.length < 10) break;
-        let p = tryParse(snippet);
-        if (p) return p;
-        // try closing braces
-        for (let j = 1; j <= 4; j++) {
-          p = tryParse(snippet + '}'.repeat(j));
-          if (p) return p;
-        }
-      }
-
-      // 7) as a last resort, try to remove last incomplete key/value pairs (naive regex)
-      // remove trailing '"key":' or '"key": <incomplete>' patterns
-      let fallback = candidate.replace(/\s*"[^"]+"\s*:\s*[^,}\]]+$/s, '').trim();
-      // ensure it ends with a brace before parsing attempts
-      if (!fallback.endsWith('}')) fallback += '}';
-      parsed = tryParse(fallback);
-      if (parsed) return parsed;
-
-      return null;
-    };
+  // helpers hoisted at module scope: sanitizeToPrompt, parseJsonStrictish
 
     // New: JSON mode system prompt
     const jsonSystemPrompt = `You are an expert-level prompt engineer for advanced text-to-image and text-to-video generative AI. Your task is to take a user's core idea and expand it into a highly detailed, structured JSON object that defines a complete creative shot.
@@ -214,23 +206,23 @@ RULES:
     // Combine user inputs into a single prompt
     let userPrompt = '';
     
-    if (imageFile && (!idea || idea.trim().length === 0) && (!directions || directions.trim().length === 0)) {
+    if (imageFile && (!idea || idea.length === 0) && (!directions || directions.length === 0)) {
       // Image only - recreate the photo
       userPrompt = 'Please analyze this image and create a detailed prompt to recreate it as closely as possible for AI image generation.';
     } else if (imageFile && (idea || directions)) {
       // Image with context
       userPrompt = 'Please analyze this image and create a prompt for AI image generation';
-      if (idea && idea.trim().length > 0) {
-        userPrompt += ` incorporating this idea: ${idea.trim()}`;
+      if (idea && idea.length > 0) {
+        userPrompt += ` incorporating this idea: ${idea}`;
       }
-      if (directions && directions.trim().length > 0) {
-        userPrompt += ` with these additional directions: ${directions.trim()}`;
+      if (directions && directions.length > 0) {
+        userPrompt += ` with these additional directions: ${directions}`;
       }
     } else {
       // Text only (original behavior)
-      userPrompt = `Idea: ${idea.trim()}`;
-      if (directions && directions.trim().length > 0) {
-        userPrompt += `\n\nAdditional directions: ${directions.trim()}`;
+      userPrompt = `Idea: ${idea}`;
+      if (directions && directions.length > 0) {
+        userPrompt += `\n\nAdditional directions: ${directions}`;
       }
     }
     // Reinforce JSON-only output in user message when JSON mode is enabled
@@ -280,7 +272,7 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
     };
 
     // Add user message with or without image
-    if (imageBase64) {
+  if (imageBase64) {
       requestBody.messages.push({
         role: 'user',
         content: [
