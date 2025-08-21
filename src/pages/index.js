@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, memo, useRef } from 'react';
+import Image from 'next/image';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { compressImage } from '../utils/imageCompression';
@@ -44,7 +45,16 @@ const ImageUpload = memo(({ onImageUpload, imagePreview, onImageRemove, isCompre
     return (
       <div className="image-preview-container">
         <div className="image-preview">
-          <img src={imagePreview} alt="Upload preview" className="preview-image" loading="lazy" />
+          <div className="relative w-full h-48">
+            <Image 
+              src={imagePreview} 
+              alt="Upload preview" 
+              fill 
+              priority={false}
+              unoptimized
+              className="object-contain"
+            />
+          </div>
           <button
             type="button"
             onClick={onImageRemove}
@@ -465,12 +475,12 @@ export default function Home() {
 
       <SpaceBackground />
       
-      <div className="min-h-screen py-8 px-4 sm:py-12 lg:px-8 relative z-10 flex items-center justify-center">
+  <div className="min-h-screen py-8 px-4 sm:py-12 lg:px-8 relative z-10 flex items-center justify-center">
         <div className="max-w-4xl w-full mx-auto">
-          <div className={`glass-ui p-8 sm:p-12 transition-opacity duration-1000 ${mounted ? 'opacity-100 animate-slide-in' : 'opacity-0'}`}>
+      <div className={`glass-ui p-8 sm:p-12 transition-opacity duration-1000 ${mounted ? 'opacity-100 animate-slide-in' : 'opacity-0'}`}>
             <header className="text-center mb-10">
               <div className={`${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
-                <h1 className="text-4xl sm:text-5xl font-bold text-gradient mb-4 text-glow tracking-tight">
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-gradient mb-4 text-glow tracking-tight">
                   Prompt Generator
                 </h1>
                 <p className="text-lg text-premium-300 max-w-2xl mx-auto">
@@ -493,6 +503,7 @@ export default function Home() {
                       rows={4}
                       maxLength={1000}
                     />
+                    <div className="absolute left-3 bottom-3 text-xs text-premium-500 select-none">Up to 1000 characters</div>
                     <button 
                       type="button" 
                       onClick={() => toggleDictation('idea')} 
@@ -516,6 +527,7 @@ export default function Home() {
                       rows={3}
                       maxLength={500}
                     />
+                    <div className="absolute left-3 bottom-3 text-xs text-premium-500 select-none">Optional • up to 500 characters</div>
                     <button 
                       type="button" 
                       onClick={() => toggleDictation('directions')} 
