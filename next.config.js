@@ -28,7 +28,33 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: (() => {
+              const isDev = process.env.NODE_ENV !== 'production';
+              const connect = ["'self'", 'https://openrouter.ai'];
+              if (process.env.VERCEL_URL) connect.push(`https://${process.env.VERCEL_URL}`);
+              const script = isDev
+                ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
+                : ["'self'", "'unsafe-inline'"]; // avoid 'unsafe-eval' in prod
+              return [
+                "default-src 'self'",
+                `connect-src ${connect.join(' ')}`,
+                "img-src 'self' data: blob:",
+                `script-src ${script.join(' ')}`,
+                "style-src 'self' 'unsafe-inline'",
+                "font-src 'self' data:",
+                "frame-ancestors 'none'",
+                "base-uri 'self'",
+                "form-action 'self'"
+              ].join('; ');
+            })(),
           },
           // Performance headers: proper caching during development vs production
           ...(process.env.NODE_ENV === 'production'

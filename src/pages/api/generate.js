@@ -3,17 +3,105 @@
 // This route handles all OpenRouter API calls server-side to protect the API key
 
 import { IncomingForm } from 'formidable';
-import fs from 'fs';
+import { promises as fs } from 'fs';
 import he from 'he'; // For HTML entity encoding - install via npm install he
 import { RateLimiterMemory } from 'rate-limiter-flexible';
+import { createHash } from 'crypto';
 
 const rateLimiter = new RateLimiterMemory({ points: 5, duration: 60 }); // 5 requests per minute
 
+// Helper: derive client IP robustly and rate-limiter key (IP + UA hashed)
+const getClientIp = (req) => {
+  const trustProxy = process.env.VERCEL === '1' || process.env.TRUST_PROXY === 'true';
+
+  const headerCandidates = [
+    'cf-connecting-ip',
+    'x-forwarded-for',
+    'x-real-ip',
+    'x-client-ip',
+    'fastly-client-ip',
+    'true-client-ip',
+    'x-vercel-proxied-for',
+  ];
+
+  const isPrivate = (ip) => {
+    if (!ip) return true;
+    const v4 = ip.includes('.');
+    if (v4) {
+      return (
+        ip.startsWith('10.') ||
+        ip.startsWith('127.') ||
+        ip.startsWith('192.168.') ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip) ||
+        ip === '0.0.0.0'
+      );
+    }
+    // IPv6 private/link-local/loopback
+    const lower = ip.toLowerCase();
+    return (
+      lower === '::1' ||
+      lower.startsWith('fc00:') ||
+      lower.startsWith('fd00:') ||
+      lower.startsWith('fe80:')
+    );
+  };
+
+  const pickPublicFromXff = (xff) => {
+    const parts = (xff || '')
+      .toString()
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => (s.startsWith('::ffff:') ? s.slice(7) : s));
+    for (const p of parts) {
+      if (!isPrivate(p)) return p;
+    }
+    return parts[0] || '';
+  };
+
+  let ip = '';
+  if (trustProxy) {
+    for (const h of headerCandidates) {
+      const val = req.headers[h];
+      if (!val) continue;
+      if (h === 'x-forwarded-for') {
+        ip = pickPublicFromXff(val.toString());
+      } else if (typeof val === 'string') {
+        ip = val;
+      }
+      if (ip) break;
+    }
+  }
+  if (!ip) {
+    ip = (req.socket && req.socket.remoteAddress) || '';
+  }
+  if (!ip) return 'unknown';
+  if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+  if (ip === '::1') ip = '127.0.0.1';
+  return ip;
+};
+
+const makeRateKey = (req) => {
+  const ip = getClientIp(req);
+  const ua = req.headers['user-agent'] || '';
+  return createHash('sha256').update(`${ip}:${ua}`).digest('hex');
+};
+
 // Helper to read a JSON body when bodyParser is disabled
-const readJsonBody = async (req) => {
+const readJsonBody = async (req, maxBytes = 1_000_000) => {
   if (req.body && typeof req.body === 'object') return req.body;
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
+  let total = 0;
+  for await (const chunk of req) {
+    total += chunk.length || 0;
+    if (total > maxBytes) {
+      const err = new Error('Payload too large');
+      err.code = 'PAYLOAD_TOO_LARGE';
+      err.statusCode = 413;
+      throw err;
+    }
+    chunks.push(chunk);
+  }
   const raw = Buffer.concat(chunks).toString('utf8');
   try { return JSON.parse(raw); } catch { return {}; }
 };
@@ -106,13 +194,14 @@ export default async function handler(req, res) {
     });
   }
 
-  // Rate limiting - 5 requests per minute per IP
+  // Rate limiting - 5 requests per minute per client (IP+UA hash)
   try {
-    await rateLimiter.consume(req.headers['x-forwarded-for'] || 'anonymous', 1);
+    const key = makeRateKey(req);
+    await rateLimiter.consume(key, 1);
   } catch {
-    return res.status(429).json({ 
-      error: 'Too many requests', 
-      message: 'Please wait before trying again.' 
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: 'Please wait before trying again.'
     });
   }
 
@@ -130,7 +219,7 @@ export default async function handler(req, res) {
       });
       [fields, files] = await form.parse(req);
     } else {
-      const body = await readJsonBody(req);
+      const body = await readJsonBody(req, 1_000_000);
       fields = {
         idea: [body.idea ?? ''],
         directions: body.directions ? [body.directions] : [''],
@@ -190,10 +279,10 @@ RULES:
     let imageBase64 = null;
     if (imageFile) {
       try {
-        const imageBuffer = fs.readFileSync(imageFile.filepath);
+        const imageBuffer = await fs.readFile(imageFile.filepath);
         imageBase64 = imageBuffer.toString('base64');
         // Clean up temporary file
-        fs.unlinkSync(imageFile.filepath);
+        await fs.unlink(imageFile.filepath);
       } catch (error) {
         console.error('Error processing image:', error);
         return res.status(500).json({
@@ -392,7 +481,14 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
     // Log the full error for debugging
     console.error('API Route Error:', error);
 
-    // Check for specific error types
+    // Handle specific error types first
+    if (error?.statusCode === 413 || error?.code === 'PAYLOAD_TOO_LARGE') {
+      return res.status(413).json({
+        error: 'Payload too large',
+        message: 'JSON body exceeds 1MB limit.'
+      });
+    }
+
     if (error.name === 'AbortError') {
       return res.status(504).json({
         error: 'Gateway timeout',

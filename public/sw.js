@@ -9,11 +9,7 @@ const STATIC_ASSETS = [
   '/favicon.ico',
 ];
 
-// API endpoints to cache
-const API_ENDPOINTS = [
-  '/api/generate',
-  '/api/surprise',
-];
+// Important: Do not cache or intercept API routes.
 
 // Cache strategies
 const cacheStrategies = {
@@ -108,10 +104,9 @@ self.addEventListener('fetch', (event) => {
     return; // Let the request hit the network unmodified
   }
 
-  // Handle API endpoints
-  if (API_ENDPOINTS.some(endpoint => url.pathname.includes(endpoint))) {
-    event.respondWith(cacheStrategies.networkFirst(request));
-    return;
+  // Do not cache or intercept API requests; let them go to the network
+  if (url.pathname.startsWith('/api/')) {
+    return; // bypass SW for API calls
   }
 
   // Handle static assets
