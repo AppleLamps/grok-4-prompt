@@ -165,18 +165,15 @@ export default function Home() {
     setCompressedSize(0);
     setIsCompressing(true);
     setCompressionProgress(0);
+    // Clear previous preview
+    setImagePreview(null);
+    if (imageObjectUrlRef.current) {
+      URL.revokeObjectURL(imageObjectUrlRef.current);
+      imageObjectUrlRef.current = null;
+    }
 
     try {
-      // preview with object URL for lower memory
-      if (imageObjectUrlRef.current) {
-        URL.revokeObjectURL(imageObjectUrlRef.current);
-        imageObjectUrlRef.current = null;
-      }
-      const firstUrl = URL.createObjectURL(file);
-      imageObjectUrlRef.current = firstUrl;
-      setImagePreview(firstUrl);
-
-      const compressedFile = await compressImage(file, {
+      const processedFile = await compressImage(file, {
         onProgress: (progress) => setCompressionProgress(Math.round(progress)),
         maxSizeMB: 1.5,
         maxWidthOrHeight: 2000,
@@ -184,21 +181,24 @@ export default function Home() {
         initialQuality: 0.8,
       });
 
-      setCompressedSize(compressedFile.size);
-      setUploadedImage(compressedFile);
-      // update preview to compressed version
-      if (imageObjectUrlRef.current) {
-        URL.revokeObjectURL(imageObjectUrlRef.current);
-        imageObjectUrlRef.current = null;
+      if (processedFile.size < file.size) {
+        setCompressedSize(processedFile.size);
       }
-      const compressedUrl = URL.createObjectURL(compressedFile);
-      imageObjectUrlRef.current = compressedUrl;
-      setImagePreview(compressedUrl);
       
+      setUploadedImage(processedFile);
+
+      const newUrl = URL.createObjectURL(processedFile);
+      imageObjectUrlRef.current = newUrl;
+      setImagePreview(newUrl);
+
     } catch (error) {
-      console.error('Error during image compression:', error);
+      console.error('Error during image processing:', error);
+      // If compression fails, use original file
       setUploadedImage(file);
-      setError('Error compressing image. Using original file.');
+      const newUrl = URL.createObjectURL(file);
+      imageObjectUrlRef.current = newUrl;
+      setImagePreview(newUrl);
+      setError('Could not process image. Using original file.');
     } finally {
       setIsCompressing(false);
       setCompressionProgress(0);
