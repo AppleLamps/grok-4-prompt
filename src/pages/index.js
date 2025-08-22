@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useMemo, memo, useRef } from 'react';
-import Image from 'next/image';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { compressImage } from '../utils/imageCompression';
@@ -46,13 +45,11 @@ const ImageUpload = memo(({ onImageUpload, imagePreview, onImageRemove, isCompre
       <div className="image-preview-container">
         <div className="image-preview">
           <div className="relative w-full h-48">
-            <Image 
-              src={imagePreview} 
-              alt="Upload preview" 
-              fill 
-              priority={false}
-              unoptimized
-              className="object-contain"
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imagePreview}
+              alt="Upload preview"
+              className="preview-image"
             />
           </div>
           <button
