@@ -122,9 +122,9 @@ const sanitizeToPrompt = (raw) => {
     // 4. Normalize whitespace
     t = t.replace(/\s+/g, ' ').trim();
 
-    // 5. Strict length enforcement (400-500 chars)
-    const MAX_LENGTH = 500;
-    const MIN_LENGTH = 300;
+  // 5. Strict length enforcement (500-1200 chars)
+  const MAX_LENGTH = 1200;
+  const MIN_LENGTH = 500;
     if (t.length > MAX_LENGTH) {
       t = t.slice(0, MAX_LENGTH);
       const lastPeriod = t.lastIndexOf('. ');
@@ -139,12 +139,12 @@ const sanitizeToPrompt = (raw) => {
       }
     }
 
-    if (t.length < 100 || t.length > 500) {
-      if (t.length > 500) t = t.slice(0, 497) + '...';
+    if (t.length < 500 || t.length > 1200) {
+      if (t.length > 1200) t = t.slice(0, 1197) + '...';
     }
     return t;
   } catch (e) {
-    const fallback = (raw || '').toString().trim().slice(0, 500);
+  const fallback = (raw || '').toString().trim().slice(0, 1200);
     return fallback.length > 100 ? fallback : 'A stunning landscape with vibrant colors and incredible detail, featuring unique natural formations and atmospheric lighting.';
   }
 };
@@ -177,10 +177,10 @@ export default async function handler(req, res) {
   }
 
   // **OPTIMIZED SYSTEM PROMPT FOR SHORTER RESPONSES**
-  const systemPrompt = `You are Grok-4 Imagine, an AI that generates creative, vivid image prompts. Your task is to create a single, detailed, and imaginative scene description that is UNDER 500 CHARACTERS (including spaces).
+  const systemPrompt = `You are Grok-4 Imagine, an AI that generates creative, vivid image prompts. Your task is to create a single, detailed, and imaginative scene description that is 500–1200 CHARACTERS (including spaces).
 
   **CRITICAL RULES:**
-  1. Response MUST be a single paragraph, 300-500 characters long
+  1. Response MUST be a single paragraph, 500–1200 characters long
   2. NO markdown, formatting, or special characters
   3. NO quotes, brackets, or other delimiters
   4. Complete sentences only - never cut off mid-word
@@ -197,7 +197,7 @@ export default async function handler(req, res) {
   - Styles: Hyperrealistic, painterly, digital art, cinematic, concept art, retro-futuristic
   - Moods: Awe, wonder, mystery, tranquility, energy, melancholy, whimsy
 
-  **IMPORTANT:** Count your characters and ensure the final output is between 300-500 characters.`;
+  **IMPORTANT:** Count your characters and ensure the final output is between 500–1200 characters.`;
 
   try {
     const controller = new AbortController();
@@ -223,8 +223,8 @@ export default async function handler(req, res) {
             content: 'Create an extraordinary image prompt now.',
           },
         ],
-        temperature: 1.2, // Balanced temperature for creativity without excessive verbosity
-        max_tokens: 140, // Slightly reduced for faster responses
+  temperature: 1.2, // Balanced temperature for creativity without excessive verbosity
+  max_tokens: 400, // Increased to accommodate longer responses up to 1200 chars
         top_p: 0.9, // Slightly more focused than before
         frequency_penalty: 0.5, // Discourage repetition
         presence_penalty: 0.4, // Encourage topic diversity

@@ -126,8 +126,8 @@ const sanitizeToPrompt = (raw) => {
       .replace(/^[>\-\s]*\*/gm, '')
       .replace(/^>\s*/gm, '');
     t = t.replace(/\s+/g, ' ').trim();
-    if (t.length > 1024) {
-      t = t.slice(0, 1024);
+    if (t.length > 1200) {
+      t = t.slice(0, 1200);
       const lastSpace = t.lastIndexOf(' ');
       if (lastSpace > 0) t = t.slice(0, lastSpace);
     }
@@ -266,7 +266,7 @@ RULES:
 
 2.  The JSON structure should be inspired by the user-provided examples, breaking down the concept into logical categories: 'title', 'prompt', 'negative_prompt', 'style', 'composition', 'lighting', 'subject', 'environment', 'camera', 'animation', 'audio', 'output', etc.
 
-3.  The top-level 'prompt' field is MANDATORY. It must contain a concise, powerful, and well-written text prompt (under 500 characters) that summarizes the detailed JSON structure.
+3.  The top-level 'prompt' field is MANDATORY. It must contain a concise, powerful, and well-written text prompt (under 1200 characters) that summarizes the detailed JSON structure.
 
 4.  Infer and add technical details where appropriate, such as camera lens (e.g., "50mm"), lighting setups (e.g., "soft top-down key"), and style notes (e.g., "surreal photoreal CGI").
 
@@ -325,11 +325,11 @@ RULES:
       messages: [
         {
           role: 'system',
-          content: isJsonMode ? jsonSystemPrompt : `You are Grok-4 Imagine, an AI that writes a single vivid image prompt under 500 characters (including spaces). Output exactly one paragraph.
+          content: isJsonMode ? jsonSystemPrompt : `You are Grok-4 Imagine, an AI that writes a single vivid image prompt between 500–1200 characters (including spaces). Output exactly one paragraph.
 
 Rules:
 
-Length 300–500 characters, complete sentences only.
+Length 500–1200 characters, complete sentences only.
 
 No markdown, quotes, brackets, or special characters.
 
