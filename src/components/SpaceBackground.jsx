@@ -99,10 +99,10 @@ export default function SpaceBackground() {
       // Clear
       ctx.clearRect(0, 0, w, h);
 
-      // Background subtle vignette
+      // Enhanced background subtle vignette
       const g = ctx.createRadialGradient(w * 0.5, h * 0.6, 0, w * 0.5, h * 0.6, Math.max(w, h));
-      g.addColorStop(0, 'rgba(8, 10, 22, 0)');
-      g.addColorStop(1, 'rgba(8, 10, 22, 0.55)');
+      g.addColorStop(0, 'rgba(15, 23, 42, 0)');
+      g.addColorStop(1, 'rgba(15, 23, 42, 0.4)');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
@@ -115,13 +115,13 @@ export default function SpaceBackground() {
         let alpha = s.a;
         if (twinkleEnabled) {
           s.t += s.tw * dt;
-          alpha *= 0.65 + 0.35 * (0.5 + 0.5 * Math.sin(s.t));
+          alpha *= 0.75 + 0.25 * (0.5 + 0.5 * Math.sin(s.t));
         }
-        ctx.globalAlpha = Math.max(0.05, Math.min(1, alpha));
+        ctx.globalAlpha = Math.max(0.15, Math.min(1, alpha));
         ctx.fillStyle = '#ffffff';
-        // Slight blue/purple tint by layer
-        if (s.d > 0.9) ctx.fillStyle = '#cddcff';
-        else if (s.d > 0.5) ctx.fillStyle = '#e9e2ff';
+        // Enhanced blue/purple tint by layer for better visibility
+        if (s.d > 0.9) ctx.fillStyle = '#e2e8f0';
+        else if (s.d > 0.5) ctx.fillStyle = '#f1f5f9';
 
         const x = s.x + parallaxX;
         const y = s.y + parallaxY;
@@ -146,13 +146,14 @@ export default function SpaceBackground() {
           s.y += s.vy * dt;
           const t = Math.min(1, s.age / s.life);
           const opacity = 1 - t;
-          // Trail
+          // Enhanced trail
           const grad = ctx.createLinearGradient(s.x - s.len, s.y - s.len * 0.35, s.x, s.y);
-          grad.addColorStop(0, 'rgba(164, 120, 255, 0)');
-          grad.addColorStop(0.4, 'rgba(164, 120, 255, 0.25)');
-          grad.addColorStop(1, `rgba(255, 255, 255, ${0.75 * opacity})`);
+          grad.addColorStop(0, 'rgba(168, 85, 247, 0)');
+          grad.addColorStop(0.3, `rgba(168, 85, 247, ${0.4 * opacity})`);
+          grad.addColorStop(0.7, `rgba(96, 165, 250, ${0.6 * opacity})`);
+          grad.addColorStop(1, `rgba(255, 255, 255, ${0.9 * opacity})`);
           ctx.strokeStyle = grad;
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 2.5;
           ctx.beginPath();
           ctx.moveTo(s.x - s.len, s.y - s.len * 0.35);
           ctx.lineTo(s.x, s.y);

@@ -11,24 +11,33 @@ module.exports = {
         'inter': ['Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
-        // Updated premium palette for a high-end look
+        // Enhanced premium palette for better brightness and contrast
         premium: {
-          50: '#fafafa',
-          100: '#f4f4f5',
-          200: '#e4e4e7',
-          300: '#d4d4d8',
-          400: '#a1a1aa',
-          500: '#71717a',
-          600: '#52525b',
-          700: '#3f3f46',
-          800: '#27272a',
-          900: '#18181b',
-          950: '#09090b',
+          50: '#ffffff',
+          100: '#f8fafc',
+          200: '#f1f5f9',
+          300: '#e2e8f0',
+          400: '#cbd5e1',
+          500: '#94a3b8',
+          600: '#64748b',
+          700: '#475569',
+          800: '#334155',
+          900: '#1e293b',
+          950: '#0f172a',
         },
-        // Accent color for highlights and glows
+        // Enhanced accent colors for better visibility
         accent: {
           DEFAULT: '#6366f1',
           hover: '#4f46e5',
+          bright: '#60a5fa',
+          purple: '#a855f7',
+          cyan: '#06b6d4',
+        },
+        // Glass effect colors
+        glass: {
+          light: 'rgba(255, 255, 255, 0.1)',
+          medium: 'rgba(255, 255, 255, 0.05)',
+          dark: 'rgba(0, 0, 0, 0.2)',
         }
       },
       backgroundImage: {

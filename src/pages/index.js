@@ -550,20 +550,20 @@ export default function Home() {
       
   <div className="min-h-screen py-8 px-4 sm:py-12 lg:px-8 relative z-10 flex items-center justify-center">
         <div className="max-w-4xl w-full mx-auto">
-      <div className={`glass-ui p-8 sm:p-12 transition-opacity duration-1000 ${mounted ? 'opacity-100 animate-slide-in' : 'opacity-0'}`}>
-            <header className="text-center mb-10">
+      <div className={`glass-ui p-8 sm:p-12 lg:p-16 transition-opacity duration-1000 hover-lift ${mounted ? 'opacity-100 animate-slide-in' : 'opacity-0'}`}>
+            <header className="text-center mb-12">
               <div className={`${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-gradient mb-4 text-glow tracking-tight">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gradient mb-6 text-glow tracking-tight">
                   Prompt Generator
                 </h1>
-                <p className="text-lg text-premium-300 max-w-2xl mx-auto">
+                <p className="text-lg sm:text-xl text-premium-200 max-w-2xl mx-auto leading-relaxed">
                   Transform your ideas into vivid, high-quality prompts for Grok 4 Imagine.
                 </p>
               </div>
             </header>
 
             <main>
-              <form onSubmit={handleSubmit} className="space-y-6 mb-10" onKeyDown={handleKeyDown}>
+              <form onSubmit={handleSubmit} className="space-y-8 mb-12" onKeyDown={handleKeyDown}>
                 <div>
                   <label htmlFor="idea" className="label-text">Your Idea</label>
                   <div className="relative">
@@ -587,6 +587,9 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
+
+                {/* Visual separator */}
+                <div className="section-divider"></div>
 
                 <div>
                   <label htmlFor="directions" className="label-text">Additional Directions <span className="optional-text">(optional)</span></label>
@@ -620,9 +623,9 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={() => setShowStylePresets(!showStylePresets)}
-                        className="w-full px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 border bg-gray-800/60 border-gray-700 text-gray-300 hover:bg-gray-700/70 hover:border-gray-600 flex items-center justify-between shadow-sm"
+                        className="w-full px-4 py-3 text-sm font-medium rounded-lg transition-all duration-300 border flex items-center justify-between shadow-sm input-field"
                       >
-                        <span>Choose Style Presets ({activeStyles.size} selected)</span>
+                        <span className="text-premium-200">Choose Style Presets ({activeStyles.size} selected)</span>
                         <svg
                           className={`w-5 h-5 transition-transform duration-200 ${showStylePresets ? 'rotate-180' : ''}`}
                           fill="none"
@@ -634,17 +637,21 @@ export default function Home() {
                       </button>
 
                       {showStylePresets && (
-                        <div className="mt-3 p-4 bg-gray-900/70 border border-gray-700 rounded-lg backdrop-blur-sm">
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 justify-items-center">
+                        <div className="mt-3 p-4 rounded-lg backdrop-blur-sm" style={{
+                          background: 'linear-gradient(180deg, rgba(51,65,85,0.7), rgba(30,41,59,0.6))',
+                          border: '1px solid hsl(var(--elev-border))',
+                          boxShadow: '0 4px 16px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.05) inset'
+                        }}>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 justify-items-center">
                             {Object.keys(stylePresets).map((styleName) => (
                               <button
                                 key={styleName}
                                 type="button"
                                 onClick={() => toggleStyle(styleName)}
-                                className={`w-full px-3 py-2 text-xs font-medium rounded-lg transition-all duration-200 border text-center ${
+                                className={`w-full px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300 border text-center ${
                                   activeStyles.has(styleName)
-                                    ? 'bg-indigo-600/90 border-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                                    : 'bg-gray-800/80 border-gray-600 text-gray-200 hover:bg-gray-700/90 hover:border-gray-500 hover:text-white'
+                                    ? 'bg-accent-bright/90 border-accent-bright text-white shadow-lg shadow-accent-bright/25'
+                                    : 'bg-premium-700/80 border-premium-600 text-premium-200 hover:bg-premium-600/90 hover:border-premium-500 hover:text-premium-50'
                                 }`}
                               >
                                 {styleName}
@@ -656,6 +663,9 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+
+                {/* Visual separator */}
+                <div className="section-divider"></div>
 
                 <div>
                   <label className="label-text">Upload Image <span className="optional-text">(optional)</span></label>
@@ -669,6 +679,9 @@ export default function Home() {
                     compressedSize={compressedSize}
                   />
                 </div>
+
+                {/* Visual separator */}
+                <div className="section-divider"></div>
 
                 <div className="flex items-center justify-end -mt-2">
                   <div className="flex items-center gap-4">
@@ -689,7 +702,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <button
                     type="button"
                     onClick={handleSurpriseMe}
@@ -724,9 +737,10 @@ export default function Home() {
 
               {showOutput && (
                 <div id="output-section" className="animate-fade-in-up">
-                  <div className="output-card">
-                    <div className="flex justify-between items-center p-4 border-b border-premium-700/50">
-                      <h3 className="text-md font-semibold text-premium-200">Generated Prompt</h3>
+                  <div className="section-divider"></div>
+                  <div className="output-card hover-lift">
+                    <div className="flex justify-between items-center p-5 border-b border-premium-600/30">
+                      <h3 className="text-lg font-semibold text-premium-100">Generated Prompt</h3>
                       {!error && generatedPrompt && (
                         <button onClick={handleCopy} className={`copy-button ${copied ? 'copied' : ''}`} title="Copy to clipboard">
                           {copied ? <CheckIcon /> : <CopyIcon />}
@@ -747,15 +761,16 @@ export default function Home() {
               )}
             </main>
           </div>
-          <footer className="text-center pt-8 space-y-1">
-            <p className="text-xs text-premium-500 font-medium">Powered by OpenRouter API – Model: x-ai/grok-4</p>
-            <p className="text-xs text-premium-500">
+          <footer className="text-center pt-12 space-y-2">
+            <div className="section-divider mb-6"></div>
+            <p className="text-sm text-premium-400 font-medium">Powered by OpenRouter API – Model: x-ai/grok-4</p>
+            <p className="text-sm text-premium-400">
               Created by @lamps_apple | follow on{' '}
-              <a 
-                href="https://x.com/lamps_apple" 
-                target="_blank" 
+              <a
+                href="https://x.com/lamps_apple"
+                target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-premium-400 transition-colors"
+                className="hover:text-premium-200 transition-colors duration-300 font-medium"
               >
                 𝕏
               </a>
