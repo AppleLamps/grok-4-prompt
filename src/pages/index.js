@@ -119,6 +119,7 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [dictatingTarget, setDictatingTarget] = useState(null);
   const [isJsonMode, setIsJsonMode] = useState(false);
+  const [showStylePresets, setShowStylePresets] = useState(false);
   const imageObjectUrlRef = useRef(null);
   const generateAbortRef = useRef(null);
 
@@ -612,22 +613,46 @@ export default function Home() {
 
                   {/* Style Preset Buttons */}
                   <div className="mt-3">
-                    <div className="text-xs text-premium-400 mb-2 font-medium">Quick Style Presets</div>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.keys(stylePresets).map((styleName) => (
-                        <button
-                          key={styleName}
-                          type="button"
-                          onClick={() => toggleStyle(styleName)}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 border ${
-                            activeStyles.has(styleName)
-                              ? 'bg-indigo-600/80 border-indigo-500 text-white shadow-md'
-                              : 'bg-gray-800/60 border-gray-700 text-gray-300 hover:bg-gray-700/70 hover:border-gray-600'
-                          }`}
+                    <div className="text-xs text-premium-400 mb-2 font-medium text-center">Quick Style Presets</div>
+
+                    {/* Dropdown for all screen sizes */}
+                    <div className="w-full">
+                      <button
+                        type="button"
+                        onClick={() => setShowStylePresets(!showStylePresets)}
+                        className="w-full px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 border bg-gray-800/60 border-gray-700 text-gray-300 hover:bg-gray-700/70 hover:border-gray-600 flex items-center justify-between shadow-sm"
+                      >
+                        <span>Choose Style Presets ({activeStyles.size} selected)</span>
+                        <svg
+                          className={`w-5 h-5 transition-transform duration-200 ${showStylePresets ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          {styleName}
-                        </button>
-                      ))}
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {showStylePresets && (
+                        <div className="mt-3 p-4 bg-gray-900/70 border border-gray-700 rounded-lg backdrop-blur-sm">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 justify-items-center">
+                            {Object.keys(stylePresets).map((styleName) => (
+                              <button
+                                key={styleName}
+                                type="button"
+                                onClick={() => toggleStyle(styleName)}
+                                className={`w-full px-3 py-2 text-xs font-medium rounded-lg transition-all duration-200 border text-center ${
+                                  activeStyles.has(styleName)
+                                    ? 'bg-indigo-600/90 border-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+                                    : 'bg-gray-800/80 border-gray-600 text-gray-200 hover:bg-gray-700/90 hover:border-gray-500 hover:text-white'
+                                }`}
+                              >
+                                {styleName}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
