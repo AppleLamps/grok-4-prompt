@@ -111,6 +111,7 @@ export default function Home() {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [activeStyles, setActiveStyles] = useState(new Set());
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [originalSize, setOriginalSize] = useState(0);
   const [compressedSize, setCompressedSize] = useState(0);
@@ -120,6 +121,30 @@ export default function Home() {
   const [isJsonMode, setIsJsonMode] = useState(false);
   const imageObjectUrlRef = useRef(null);
   const generateAbortRef = useRef(null);
+
+  // Style presets with detailed prompts
+  const stylePresets = {
+    'Realistic': 'photorealistic rendering with natural lighting, high detail, and lifelike textures',
+    'Cartoon': 'vibrant cartoon style with bold colors, simplified forms, and playful character design',
+    'Anime': 'anime art style with expressive characters, dynamic poses, and detailed backgrounds',
+    'Oil Painting': 'traditional oil painting technique with rich textures, visible brushstrokes, and classical composition',
+    'Cyberpunk': 'cyberpunk aesthetic with neon lighting, dark urban atmosphere, futuristic technology, and dystopian elements',
+    'Fantasy': 'fantasy art style with magical elements, ethereal lighting, mystical creatures, and enchanted environments',
+    'Steampunk': 'steampunk design with brass machinery, Victorian elements, steam-powered technology, and industrial aesthetics',
+    'Sci-Fi': 'science fiction style with advanced technology, sleek designs, futuristic architecture, and space-age elements',
+    'Cinematic': 'cinematic composition with dramatic lighting, film-like quality, and professional cinematography',
+    'Dark': 'dark and moody atmosphere with deep shadows, muted colors, and mysterious ambiance',
+    'Ethereal': 'ethereal and dreamlike quality with soft lighting, flowing elements, and otherworldly beauty',
+    'Vintage': 'vintage aesthetic with retro colors, classic styling, and nostalgic atmosphere',
+    'Watercolor': 'watercolor painting style with soft washes, flowing pigments, delicate transparency, and organic color bleeding',
+    'Minimalist': 'minimalist design with clean lines, simple forms, negative space, and refined elegance',
+    'Abstract': 'abstract art style with non-representational forms, bold geometric shapes, and expressive color relationships',
+    'Surreal': 'surrealist aesthetic with dreamlike imagery, impossible scenarios, and fantastical visual metaphors',
+    'Gothic': 'gothic atmosphere with dramatic architecture, ornate details, mysterious shadows, and romantic darkness',
+    'Retro': 'retro design with mid-century modern elements, bold patterns, vintage typography, and nostalgic color palettes',
+    'Impressionist': 'impressionist painting style with loose brushwork, light effects, vibrant colors, and atmospheric quality',
+    'Documentary': 'documentary photography style with authentic moments, natural lighting, and journalistic storytelling approach'
+  };
 
   // Memoized values for better performance
   const recognitionRef = useMemo(() => ({ current: null }), []);
@@ -437,6 +462,56 @@ export default function Home() {
     setHistory([]);
   }, []);
 
+  // Toggle style preset function
+  const toggleStyle = useCallback((styleName) => {
+    const stylePrompt = stylePresets[styleName];
+    if (!stylePrompt) return;
+
+    setActiveStyles(prev => {
+      const newActiveStyles = new Set(prev);
+      const isActive = newActiveStyles.has(styleName);
+
+      if (isActive) {
+        newActiveStyles.delete(styleName);
+      } else {
+        newActiveStyles.add(styleName);
+      }
+
+      return newActiveStyles;
+    });
+
+    setDirections(prev => {
+      const stylePrompt = stylePresets[styleName];
+      const isCurrentlyActive = activeStyles.has(styleName);
+
+      if (isCurrentlyActive) {
+        // Remove the style
+        let newDirections = prev;
+
+        // Remove the exact style prompt
+        newDirections = newDirections.replace(stylePrompt, '');
+
+        // Clean up any double commas, leading/trailing commas, and extra spaces
+        newDirections = newDirections
+          .replace(/,\s*,/g, ',')  // Remove double commas
+          .replace(/^,\s*/, '')    // Remove leading comma
+          .replace(/,\s*$/, '')    // Remove trailing comma
+          .replace(/\s+/g, ' ')    // Replace multiple spaces with single space
+          .trim();
+
+        return newDirections;
+      } else {
+        // Add the style
+        const newDirections = prev.trim();
+        if (newDirections === '') {
+          return stylePrompt;
+        } else {
+          return newDirections + ', ' + stylePrompt;
+        }
+      }
+    });
+  }, [stylePresets, activeStyles]);
+
   // Smooth scroll when output appears
   useEffect(() => {
     if (showOutput) {
@@ -533,6 +608,27 @@ export default function Home() {
                     >
                       {dictatingTarget === 'directions' ? <StopIcon /> : <MicIcon />}
                     </button>
+                  </div>
+
+                  {/* Style Preset Buttons */}
+                  <div className="mt-3">
+                    <div className="text-xs text-premium-400 mb-2 font-medium">Quick Style Presets</div>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.keys(stylePresets).map((styleName) => (
+                        <button
+                          key={styleName}
+                          type="button"
+                          onClick={() => toggleStyle(styleName)}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 border ${
+                            activeStyles.has(styleName)
+                              ? 'bg-indigo-600/80 border-indigo-500 text-white shadow-md'
+                              : 'bg-gray-800/60 border-gray-700 text-gray-300 hover:bg-gray-700/70 hover:border-gray-600'
+                          }`}
+                        >
+                          {styleName}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
