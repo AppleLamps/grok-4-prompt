@@ -21,7 +21,7 @@ export default function App({ Component, pageProps }) {
         }
       } else {
         // In development, aggressively clean up any caches/SWs that might interfere
-        setTimeout(async () => {
+        const id = setTimeout(async () => {
           try {
             await cacheManager.unregisterServiceWorkers?.()
             await cacheManager.clearAllCaches?.()
@@ -29,6 +29,7 @@ export default function App({ Component, pageProps }) {
             // Silently ignore errors to avoid breaking development
           }
         }, 100) // Small delay to avoid race conditions
+        return () => clearTimeout(id)
       }
     }
   }, [])

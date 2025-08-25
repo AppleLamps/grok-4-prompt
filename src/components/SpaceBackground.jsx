@@ -29,6 +29,10 @@ export default function SpaceBackground() {
     if (mq.addEventListener) mq.addEventListener('change', updateReduced);
     else if (mq.addListener) mq.addListener(updateReduced);
 
+    // gradient cached between frames, rebuilt on resize
+    let bgGrad = null;
+
+
     // Sizing
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -40,6 +44,10 @@ export default function SpaceBackground() {
       canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // cache the vignette gradient
+      bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.6, 0, w * 0.5, h * 0.6, Math.max(w, h));
+      bgGrad.addColorStop(0, 'rgba(15, 23, 42, 0)');
+      bgGrad.addColorStop(1, 'rgba(15, 23, 42, 0.4)');
       seedStars();
     };
 
@@ -47,10 +55,14 @@ export default function SpaceBackground() {
     function seedStars() {
       const { w, h } = sizeRef.current;
       const area = w * h;
-      // Density tuned for crisp yet performant field
-      const base = Math.min(1200, Math.floor(area / 2500));
+      // Density tuned for crisp yet performant field, downscale on small screens and reduced motion
+      const densityFactor = (w <= 480 ? 0.6 : (w <= 768 ? 0.8 : 1)) * (reducedRef.current ? 0.7 : 1);
+      const base = Math.min(1200, Math.floor((area / 2500) * densityFactor));
       const stars = new Array(base).fill(0).map(() => {
         const depth = Math.random() < 0.5 ? 0.35 : Math.random() < 0.8 ? 0.65 : 1.0; // 3 layers
+        let color = '#ffffff';
+        if (depth > 0.9) color = '#e2e8f0';
+        else if (depth > 0.5) color = '#f1f5f9';
         return {
           x: Math.random() * w,
           y: Math.random() * h,
@@ -59,6 +71,7 @@ export default function SpaceBackground() {
           t: Math.random() * Math.PI * 2, // phase for twinkle
           tw: 0.5 + Math.random() * 1.5, // twinkle speed
           d: depth, // depth factor (parallax)
+          color,
         };
       });
       starsRef.current = stars;
@@ -92,18 +105,15 @@ export default function SpaceBackground() {
 
       const { w, h } = sizeRef.current;
       // Read parallax intent from CSS vars written by useParallax
-      const rootStyle = getComputedStyle(document.documentElement);
-      const px = parseFloat(rootStyle.getPropertyValue('--parallaxX') || '0') || 0;
-      const py = parseFloat(rootStyle.getPropertyValue('--parallaxY') || '0') || 0;
+      const root = document.documentElement;
+      const px = parseFloat(root.style.getPropertyValue('--parallaxX') || '0') || 0;
+      const py = parseFloat(root.style.getPropertyValue('--parallaxY') || '0') || 0;
 
       // Clear
       ctx.clearRect(0, 0, w, h);
 
-      // Enhanced background subtle vignette
-      const g = ctx.createRadialGradient(w * 0.5, h * 0.6, 0, w * 0.5, h * 0.6, Math.max(w, h));
-      g.addColorStop(0, 'rgba(15, 23, 42, 0)');
-      g.addColorStop(1, 'rgba(15, 23, 42, 0.4)');
-      ctx.fillStyle = g;
+      // Use cached background gradient computed on resize
+      ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, w, h);
 
       // Stars
@@ -114,14 +124,12 @@ export default function SpaceBackground() {
         const parallaxY = py * (6 + 14 * s.d);
         let alpha = s.a;
         if (twinkleEnabled) {
-          s.t += s.tw * dt;
+          const twinkleDt = (w <= 480 || reducedRef.current) ? dt * 0.5 : dt;
+          s.t += s.tw * twinkleDt;
           alpha *= 0.75 + 0.25 * (0.5 + 0.5 * Math.sin(s.t));
         }
         ctx.globalAlpha = Math.max(0.15, Math.min(1, alpha));
-        ctx.fillStyle = '#ffffff';
-        // Enhanced blue/purple tint by layer for better visibility
-        if (s.d > 0.9) ctx.fillStyle = '#e2e8f0';
-        else if (s.d > 0.5) ctx.fillStyle = '#f1f5f9';
+        ctx.fillStyle = s.color;
 
         const x = s.x + parallaxX;
         const y = s.y + parallaxY;
@@ -146,13 +154,22 @@ export default function SpaceBackground() {
           s.y += s.vy * dt;
           const t = Math.min(1, s.age / s.life);
           const opacity = 1 - t;
-          // Enhanced trail
-          const grad = ctx.createLinearGradient(s.x - s.len, s.y - s.len * 0.35, s.x, s.y);
-          grad.addColorStop(0, 'rgba(168, 85, 247, 0)');
-          grad.addColorStop(0.3, `rgba(168, 85, 247, ${0.4 * opacity})`);
-          grad.addColorStop(0.7, `rgba(96, 165, 250, ${0.6 * opacity})`);
-          grad.addColorStop(1, `rgba(255, 255, 255, ${0.9 * opacity})`);
-          ctx.strokeStyle = grad;
+          // Enhanced trail with cached gradient to reduce per-frame allocations
+          const dx = s.x - (s._gx || -Infinity);
+          const dy = s.y - (s._gy || -Infinity);
+          const dMove = Math.hypot(dx, dy);
+          if (!s._grad || dMove > 8 || Math.abs((s._gOpacity || 0) - opacity) > 0.1) {
+            const g = ctx.createLinearGradient(s.x - s.len, s.y - s.len * 0.35, s.x, s.y);
+            g.addColorStop(0, 'rgba(168, 85, 247, 0)');
+            g.addColorStop(0.3, `rgba(168, 85, 247, ${0.4 * opacity})`);
+            g.addColorStop(0.7, `rgba(96, 165, 250, ${0.6 * opacity})`);
+            g.addColorStop(1, `rgba(255, 255, 255, ${0.9 * opacity})`);
+            s._grad = g;
+            s._gx = s.x;
+            s._gy = s.y;
+            s._gOpacity = opacity;
+          }
+          ctx.strokeStyle = s._grad;
           ctx.lineWidth = 2.5;
           ctx.beginPath();
           ctx.moveTo(s.x - s.len, s.y - s.len * 0.35);

@@ -387,18 +387,22 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
     // Make request to OpenRouter API with timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
-    const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000',
-        'X-Title': 'Prompt Generator'
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    let openRouterResponse;
+    try {
+      openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000',
+          'X-Title': 'Prompt Generator'
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     // Check if the OpenRouter API request was successful
     if (!openRouterResponse.ok) {

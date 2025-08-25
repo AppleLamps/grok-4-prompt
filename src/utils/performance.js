@@ -189,6 +189,8 @@ export const cacheManager = {
         if (Date.now() - cached.timestamp < cached.ttl) {
           return cached.data;
         }
+        // prune expired entry
+        await cache.delete(key);
       }
     }
     return null;

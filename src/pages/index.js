@@ -17,6 +17,61 @@ const HistoryModal = dynamic(() => import('../components/HistoryModal'), {
   loading: () => null
 });
 
+// Lazy compression helpers for large history entries
+let lzModulePromise = null;
+async function compressIfLarge(text, maxBytes = 5 * 1024) {
+  try {
+    const bytes = new TextEncoder().encode(text);
+    if (bytes.length <= maxBytes) {
+      return { compressed: false, data: text };
+    }
+    if (!lzModulePromise) lzModulePromise = import('lz-string');
+    const lz = await lzModulePromise;
+    const compressed = lz.compressToUTF16(text);
+    return { compressed: true, data: compressed };
+  } catch {
+    return { compressed: false, data: text };
+  }
+}
+
+async function decompressIfNeeded(entry) {
+  try {
+    if (!entry || typeof entry !== 'object') return '';
+    if (!entry.compressed) return String(entry.data ?? '');
+    if (!lzModulePromise) lzModulePromise = import('lz-string');
+    const lz = await lzModulePromise;
+    return lz.decompressFromUTF16(String(entry.data ?? '')) || '';
+  } catch {
+    return '';
+  }
+}
+
+
+// Style presets with detailed prompts (module scope to avoid re-creating per render)
+const STYLE_PRESETS = {
+  'Realistic': 'photorealistic rendering with natural lighting, high detail, and lifelike textures',
+  'Cartoon': 'vibrant cartoon style with bold colors, simplified forms, and playful character design',
+  'Anime': 'anime art style with expressive characters, dynamic poses, and detailed backgrounds',
+  'Oil Painting': 'traditional oil painting technique with rich textures, visible brushstrokes, and classical composition',
+  'Cyberpunk': 'cyberpunk aesthetic with neon lighting, dark urban atmosphere, futuristic technology, and dystopian elements',
+  'Fantasy': 'fantasy art style with magical elements, ethereal lighting, mystical creatures, and enchanted environments',
+  'Steampunk': 'steampunk design with brass machinery, Victorian elements, steam-powered technology, and industrial aesthetics',
+  'Sci-Fi': 'science fiction style with advanced technology, sleek designs, futuristic architecture, and space-age elements',
+  'Cinematic': 'cinematic composition with dramatic lighting, film-like quality, and professional cinematography',
+  'Dark': 'dark and moody atmosphere with deep shadows, muted colors, and mysterious ambiance',
+  'Ethereal': 'ethereal and dreamlike quality with soft lighting, flowing elements, and otherworldly beauty',
+  'Vintage': 'vintage aesthetic with retro colors, classic styling, and nostalgic atmosphere',
+  'Watercolor': 'watercolor painting style with soft washes, flowing pigments, delicate transparency, and organic color bleeding',
+  'Minimalist': 'minimalist design with clean lines, simple forms, negative space, and refined elegance',
+  'Abstract': 'abstract art style with non-representational forms, bold geometric shapes, and expressive color relationships',
+  'Surreal': 'surrealist aesthetic with dreamlike imagery, impossible scenarios, and fantastical visual metaphors',
+  'Gothic': 'gothic atmosphere with dramatic architecture, ornate details, mysterious shadows, and romantic darkness',
+  'Retro': 'retro design with mid-century modern elements, bold patterns, vintage typography, and nostalgic color palettes',
+  'Impressionist': 'impressionist painting style with loose brushwork, light effects, vibrant colors, and atmospheric quality',
+  'Documentary': 'documentary photography style with authentic moments, natural lighting, and journalistic storytelling approach'
+};
+
+
 // Memoized components for better performance
 const ImageUpload = memo(({ onImageUpload, imagePreview, onImageRemove, isCompressing, compressionProgress, originalSize, compressedSize }) => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -124,31 +179,10 @@ export default function Home() {
   const generateAbortRef = useRef(null);
 
   // Style presets with detailed prompts
-  const stylePresets = {
-    'Realistic': 'photorealistic rendering with natural lighting, high detail, and lifelike textures',
-    'Cartoon': 'vibrant cartoon style with bold colors, simplified forms, and playful character design',
-    'Anime': 'anime art style with expressive characters, dynamic poses, and detailed backgrounds',
-    'Oil Painting': 'traditional oil painting technique with rich textures, visible brushstrokes, and classical composition',
-    'Cyberpunk': 'cyberpunk aesthetic with neon lighting, dark urban atmosphere, futuristic technology, and dystopian elements',
-    'Fantasy': 'fantasy art style with magical elements, ethereal lighting, mystical creatures, and enchanted environments',
-    'Steampunk': 'steampunk design with brass machinery, Victorian elements, steam-powered technology, and industrial aesthetics',
-    'Sci-Fi': 'science fiction style with advanced technology, sleek designs, futuristic architecture, and space-age elements',
-    'Cinematic': 'cinematic composition with dramatic lighting, film-like quality, and professional cinematography',
-    'Dark': 'dark and moody atmosphere with deep shadows, muted colors, and mysterious ambiance',
-    'Ethereal': 'ethereal and dreamlike quality with soft lighting, flowing elements, and otherworldly beauty',
-    'Vintage': 'vintage aesthetic with retro colors, classic styling, and nostalgic atmosphere',
-    'Watercolor': 'watercolor painting style with soft washes, flowing pigments, delicate transparency, and organic color bleeding',
-    'Minimalist': 'minimalist design with clean lines, simple forms, negative space, and refined elegance',
-    'Abstract': 'abstract art style with non-representational forms, bold geometric shapes, and expressive color relationships',
-    'Surreal': 'surrealist aesthetic with dreamlike imagery, impossible scenarios, and fantastical visual metaphors',
-    'Gothic': 'gothic atmosphere with dramatic architecture, ornate details, mysterious shadows, and romantic darkness',
-    'Retro': 'retro design with mid-century modern elements, bold patterns, vintage typography, and nostalgic color palettes',
-    'Impressionist': 'impressionist painting style with loose brushwork, light effects, vibrant colors, and atmospheric quality',
-    'Documentary': 'documentary photography style with authentic moments, natural lighting, and journalistic storytelling approach'
-  };
+  const stylePresets = STYLE_PRESETS;
 
   // Memoized values for better performance
-  const recognitionRef = useMemo(() => ({ current: null }), []);
+  const recognitionRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
@@ -177,7 +211,7 @@ export default function Home() {
       setError('Please upload a valid image file.');
       return;
     }
-    
+
     if (file.size > 10 * 1024 * 1024) {
       setError('Image file size must be less than 10MB.');
       return;
@@ -217,7 +251,7 @@ export default function Home() {
       const compressedUrl = URL.createObjectURL(compressedFile);
       imageObjectUrlRef.current = compressedUrl;
       setImagePreview(compressedUrl);
-      
+
     } catch (error) {
       console.error('Error during image compression:', error);
       setUploadedImage(file);
@@ -243,7 +277,7 @@ export default function Home() {
       setError('Please describe your idea or upload an image.');
       return;
     }
-    
+
     // cancel in-flight request
     if (generateAbortRef.current) {
       generateAbortRef.current.abort();
@@ -255,7 +289,7 @@ export default function Home() {
     setIsLoading(true);
     setError('');
     setShowOutput(false);
-    
+
     try {
       let response;
       if (uploadedImage) {
@@ -276,7 +310,7 @@ export default function Home() {
           body: JSON.stringify({ idea: idea.trim(), directions: directions.trim() || undefined, isJsonMode })
         });
       }
-      
+
       const ct = response.headers.get('content-type') || '';
       let data;
       if (ct.includes('application/json')) {
@@ -290,20 +324,27 @@ export default function Home() {
       if (!response.ok) {
         throw new Error(data?.message || 'Failed to generate prompt');
       }
-      
+
       const displayPrompt = isJsonMode
         ? JSON.stringify(data.prompt, null, 2)
         : (data.prompt || '').toString();
-      
+
+      // Compress if large for storage; keep a small preview for UI listing
+      const promptEntry = await compressIfLarge(displayPrompt, 5 * 1024);
+      const promptPreview = displayPrompt.length > 512
+        ? displayPrompt.slice(0, 512) + '…'
+        : displayPrompt;
+
       setGeneratedPrompt(displayPrompt);
       setShowOutput(true);
-      
-  setHistory((h) => [{ 
-        id: Date.now(), 
-        idea, 
-        directions, 
-        prompt: displayPrompt, 
-        fav: false 
+
+  setHistory((h) => [{
+        id: Date.now(),
+        idea,
+        directions,
+        prompt: promptPreview,
+        promptEntry,
+        fav: false
   }, ...h].slice(0, 50));
     } catch (err) {
   if (err.name === 'AbortError') return;
@@ -342,10 +383,10 @@ export default function Home() {
 
   const toggleDictation = useCallback(async (target) => {
     if (typeof window === 'undefined') return;
-    
+
     try {
       let SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      
+
       if (!SR) {
         try {
           const { SpeechRecognition: PolyfillSpeechRecognition } = await import('web-speech-cognitive-services');
@@ -354,33 +395,33 @@ export default function Home() {
           console.warn('Failed to load speech recognition polyfill:', polyfillError);
         }
       }
-      
+
       if (!SR) {
         setError('Speech recognition is not supported in this browser.');
         return;
       }
-      
+
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
         setDictatingTarget(null);
         return;
       }
-      
+
       const rec = new SR();
       recognitionRef.current = rec;
       rec.lang = 'en-US';
       rec.interimResults = false;
       rec.maxAlternatives = 1;
       rec.onstart = () => setDictatingTarget(target);
-      rec.onend = () => { 
-        setDictatingTarget(null); 
-        recognitionRef.current = null; 
+      rec.onend = () => {
+        setDictatingTarget(null);
+        recognitionRef.current = null;
       };
-      rec.onerror = (ev) => { 
-        console.warn('Speech error', ev.error); 
-        setDictatingTarget(null); 
-        recognitionRef.current = null; 
+      rec.onerror = (ev) => {
+        console.warn('Speech error', ev.error);
+        setDictatingTarget(null);
+        recognitionRef.current = null;
       };
       rec.onresult = (ev) => {
         const transcript = ev.results?.[0]?.[0]?.transcript || '';
@@ -422,14 +463,19 @@ export default function Home() {
         throw new Error(data?.message || 'Failed to get a surprise prompt.');
       }
       const surprisePrompt = (data.prompt || '').toString();
+      const promptEntry = await compressIfLarge(surprisePrompt, 5 * 1024);
+      const promptPreview = surprisePrompt.length > 512
+        ? surprisePrompt.slice(0, 512) + '…'
+        : surprisePrompt;
       setGeneratedPrompt(surprisePrompt);
       setShowOutput(true);
-  setHistory((h) => [{ 
-        id: Date.now(), 
-        idea: 'Surprise Me', 
-        directions: '', 
-        prompt: surprisePrompt, 
-        fav: false 
+  setHistory((h) => [{
+        id: Date.now(),
+        idea: 'Surprise Me',
+        directions: '',
+        prompt: promptPreview,
+        promptEntry,
+        fav: false
   }, ...h].slice(0, 50));
     } catch (err) {
       console.error('Surprise Me error:', err);
@@ -533,6 +579,10 @@ export default function Home() {
         generateAbortRef.current.abort();
         generateAbortRef.current = null;
       }
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+        recognitionRef.current = null;
+      }
     };
   }, []);
 
@@ -547,7 +597,7 @@ export default function Home() {
       </Head>
 
       <SpaceBackground />
-      
+
   <div className="min-h-screen py-8 px-4 sm:py-12 lg:px-8 relative z-10 flex items-center justify-center">
         <div className="max-w-4xl w-full mx-auto">
       <div className={`glass-ui p-8 sm:p-12 lg:p-16 transition-opacity duration-1000 hover-lift ${mounted ? 'opacity-100 animate-slide-in' : 'opacity-0'}`}>
@@ -567,20 +617,20 @@ export default function Home() {
                 <div>
                   <label htmlFor="idea" className="label-text">Your Idea</label>
                   <div className="relative">
-                    <textarea 
-                      id="idea" 
-                      value={idea} 
-                      onChange={(e) => setIdea(e.target.value)} 
-                      className="input-field min-h-[120px] pr-12" 
-                      placeholder="A futuristic city skyline at dusk..." 
+                    <textarea
+                      id="idea"
+                      value={idea}
+                      onChange={(e) => setIdea(e.target.value)}
+                      className="input-field min-h-[120px] pr-12"
+                      placeholder="A futuristic city skyline at dusk..."
                       rows={4}
                       maxLength={1000}
                     />
                     <div className="absolute left-3 bottom-3 text-xs text-premium-500 select-none">Up to 1000 characters</div>
-                    <button 
-                      type="button" 
-                      onClick={() => toggleDictation('idea')} 
-                      className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'idea' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`} 
+                    <button
+                      type="button"
+                      onClick={() => toggleDictation('idea')}
+                      className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'idea' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`}
                       aria-label="Voice input for idea"
                     >
                       {dictatingTarget === 'idea' ? <StopIcon /> : <MicIcon />}
@@ -594,20 +644,20 @@ export default function Home() {
                 <div>
                   <label htmlFor="directions" className="label-text">Additional Directions <span className="optional-text">(optional)</span></label>
                   <div className="relative">
-                    <textarea 
-                      id="directions" 
-                      value={directions} 
-                      onChange={(e) => setDirections(e.target.value)} 
-                      className="input-field min-h-[100px] pr-12" 
-                      placeholder="Style: cinematic, cyberpunk. Mood: mysterious, awe-inspiring..." 
+                    <textarea
+                      id="directions"
+                      value={directions}
+                      onChange={(e) => setDirections(e.target.value)}
+                      className="input-field min-h-[100px] pr-12"
+                      placeholder="Style: cinematic, cyberpunk. Mood: mysterious, awe-inspiring..."
                       rows={3}
                       maxLength={500}
                     />
                     <div className="absolute left-3 bottom-3 text-xs text-premium-500 select-none">Optional • up to 500 characters</div>
-                    <button 
-                      type="button" 
-                      onClick={() => toggleDictation('directions')} 
-                      className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'directions' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`} 
+                    <button
+                      type="button"
+                      onClick={() => toggleDictation('directions')}
+                      className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'directions' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`}
                       aria-label="Voice input for directions"
                     >
                       {dictatingTarget === 'directions' ? <StopIcon /> : <MicIcon />}
@@ -785,7 +835,7 @@ export default function Home() {
       <button onClick={() => setShowHistory(true)} className="history-button animate-float" aria-label="Open history">
         <HistoryIcon className="w-5 h-5" />
       </button>
-      
+
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
       <HistoryModal
         isOpen={showHistory}
