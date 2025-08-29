@@ -175,6 +175,7 @@ export default function Home() {
   const [dictatingTarget, setDictatingTarget] = useState(null);
   const [isJsonMode, setIsJsonMode] = useState(false);
   const [showStylePresets, setShowStylePresets] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const imageObjectUrlRef = useRef(null);
   const generateAbortRef = useRef(null);
 
@@ -186,24 +187,25 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
+    setIsClient(true);
   }, []);
 
-  // Load history on mount
+  // Load history on mount - only on client
   useEffect(() => {
+    if (!isClient) return;
     try {
-      const saved = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('pg_history') || '[]') : [];
+      const saved = JSON.parse(localStorage.getItem('pg_history') || '[]');
       if (Array.isArray(saved)) setHistory(saved);
     } catch {}
-  }, []);
+  }, [isClient]);
 
-  // Persist history
+  // Persist history - only on client
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pg_history', JSON.stringify(history));
-    }
-  }, [history]);
+    if (!isClient) return;
+    localStorage.setItem('pg_history', JSON.stringify(history));
+  }, [history, isClient]);
 
-  // Parallax effect
+  // Parallax effect - call hook at top level, but only activate when mounted
   useParallax();
 
   const handleImageUpload = useCallback(async (file) => {
@@ -596,7 +598,7 @@ export default function Home() {
         <link rel="dns-prefetch" href="https://openrouter.ai" />
       </Head>
 
-      <SpaceBackground />
+      {mounted && <SpaceBackground />}
 
   <div className="min-h-screen py-8 px-4 sm:py-12 lg:px-8 relative z-10 flex items-center justify-center">
         <div className="max-w-4xl w-full mx-auto">
