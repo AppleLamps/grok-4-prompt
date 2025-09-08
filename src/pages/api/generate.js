@@ -353,7 +353,6 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
         }
       ],
       temperature: 0.7,
-      max_tokens: 1000,
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0,
