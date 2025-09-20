@@ -815,7 +815,7 @@ export default function Home() {
           </div>
           <footer className="text-center pt-12 space-y-2">
             <div className="section-divider mb-6"></div>
-            <p className="text-sm text-premium-400 font-medium">Powered by OpenRouter API – Model: x-ai/grok-4</p>
+            <p className="text-sm text-premium-400 font-medium">Powered by OpenRouter API – Model: x-ai/grok-4-fast:free</p>
             <p className="text-sm text-premium-400">
               Created by @lamps_apple | follow on{' '}
               <a
