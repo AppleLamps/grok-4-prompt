@@ -321,7 +321,7 @@ RULES:
 
     // Prepare request body for OpenRouter API
     const requestBody = {
-      model: 'x-ai/grok-4-fast:free',
+      model: 'x-ai/grok-4-fast',
       messages: [
         {
           role: 'system',
