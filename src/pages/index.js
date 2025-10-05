@@ -488,6 +488,12 @@ export default function Home() {
     }
   }, []);
 
+  const handleClearAll = useCallback(() => {
+    setIdea('');
+    setDirections('');
+    document.getElementById('idea')?.focus();
+  }, []);
+
   const toggleFavorite = useCallback((id) => {
     setHistory((h) => h.map((e) => (e.id === id ? { ...e, fav: !e.fav } : e)));
   }, []);
@@ -754,7 +760,8 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <button type="button" onClick={handleClearAll} disabled={isLoading || isSurpriseLoading} className="premium-button">Clear All</button>
                   <button
                     type="button"
                     onClick={handleSurpriseMe}
@@ -815,7 +822,7 @@ export default function Home() {
           </div>
           <footer className="text-center pt-12 space-y-2">
             <div className="section-divider mb-6"></div>
-            <p className="text-sm text-premium-400 font-medium">Powered by OpenRouter API – Model: x-ai/grok-4-fast:free</p>
+            <p className="text-sm text-premium-400 font-medium">Powered by OpenRouter API – Model: x-ai/grok-4-fast</p>
             <p className="text-sm text-premium-400">
               Created by @lamps_apple | follow on{' '}
               <a
