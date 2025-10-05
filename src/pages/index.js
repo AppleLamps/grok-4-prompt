@@ -491,8 +491,11 @@ export default function Home() {
   const handleClearAll = useCallback(() => {
     setIdea('');
     setDirections('');
+    setGeneratedPrompt('');
+    setShowOutput(false);
+    handleImageRemove();
     document.getElementById('idea')?.focus();
-  }, []);
+  }, [handleImageRemove]);
 
   const toggleFavorite = useCallback((id) => {
     setHistory((h) => h.map((e) => (e.id === id ? { ...e, fav: !e.fav } : e)));
