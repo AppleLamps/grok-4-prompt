@@ -224,7 +224,6 @@ export default async function handler(req, res) {
           },
         ],
   temperature: 1.2, // Balanced temperature for creativity without excessive verbosity
-  max_tokens: 400, // Increased to accommodate longer responses up to 1200 chars
         top_p: 0.9, // Slightly more focused than before
         frequency_penalty: 0.5, // Discourage repetition
         presence_penalty: 0.4, // Encourage topic diversity
