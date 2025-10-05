@@ -211,7 +211,7 @@ export default async function handler(req, res) {
         'X-Title': 'Prompt Generator - Surprise Me'
       },
       body: JSON.stringify({
-        model: 'x-ai/grok-3', // Using Grok-3 for consistency
+        model: 'x-ai/grok-4-fast', // Using Grok-3 for consistency
         messages: [
           {
             role: 'system',
