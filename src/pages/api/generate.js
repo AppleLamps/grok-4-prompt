@@ -321,11 +321,11 @@ RULES:
 
     // Prepare request body for OpenRouter API
     const requestBody = {
-      model: 'x-ai/grok-4',
+      model: 'x-ai/grok-4-fast',
       messages: [
         {
           role: 'system',
-          content: isJsonMode ? jsonSystemPrompt : `You are Grok-4 Imagine, an AI that writes a single vivid image prompt between 500–1200 characters (including spaces). Output exactly one paragraph.
+          content: isJsonMode ? jsonSystemPrompt : `You are Grok-4 Fast Imagine, an AI that writes a single vivid image prompt between 500–1200 characters (including spaces). Output exactly one paragraph.
 
 Rules:
 

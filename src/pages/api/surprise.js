@@ -177,7 +177,7 @@ export default async function handler(req, res) {
   }
 
   // **OPTIMIZED SYSTEM PROMPT FOR SHORTER RESPONSES**
-  const systemPrompt = `You are Grok-4 Imagine, an AI that generates creative, vivid image prompts. Your task is to create a single, detailed, and imaginative scene description that is 500–1200 CHARACTERS (including spaces).
+  const systemPrompt = `You are Grok-4 Fast Imagine, an AI that generates creative, vivid image prompts. Your task is to create a single, detailed, and imaginative scene description that is 500–1200 CHARACTERS (including spaces).
 
   **CRITICAL RULES:**
   1. Response MUST be a single paragraph, 500–1200 characters long
@@ -211,7 +211,7 @@ export default async function handler(req, res) {
         'X-Title': 'Prompt Generator - Surprise Me'
       },
       body: JSON.stringify({
-        model: 'x-ai/grok-3', // Using Grok-3 for consistency
+        model: 'x-ai/grok-4-fast',
         messages: [
           {
             role: 'system',
