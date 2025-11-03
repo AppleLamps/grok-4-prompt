@@ -3,6 +3,7 @@ import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { compressImage } from '../utils/imageCompression';
 import useParallax from '../hooks/useParallax';
+import logger from '../utils/logger';
 import SpaceBackground from '../components/SpaceBackground';
 import { CopyIcon, CheckIcon, HelpIcon, HistoryIcon, MicIcon, StopIcon, UploadIcon, ImageIcon, TrashIcon } from '../components/IconComponents';
 
@@ -196,7 +197,7 @@ export default function Home() {
     try {
       const saved = JSON.parse(localStorage.getItem('pg_history') || '[]');
       if (Array.isArray(saved)) setHistory(saved);
-    } catch {}
+    } catch { }
   }, [isClient]);
 
   // Persist history - only on client
@@ -255,7 +256,7 @@ export default function Home() {
       setImagePreview(compressedUrl);
 
     } catch (error) {
-      console.error('Error during image compression:', error);
+      logger.error('Error during image compression:', error);
       setUploadedImage(file);
       setError('Error compressing image. Using original file.');
     } finally {
@@ -340,17 +341,17 @@ export default function Home() {
       setGeneratedPrompt(displayPrompt);
       setShowOutput(true);
 
-  setHistory((h) => [{
+      setHistory((h) => [{
         id: Date.now(),
         idea,
         directions,
         prompt: promptPreview,
         promptEntry,
         fav: false
-  }, ...h].slice(0, 50));
+      }, ...h].slice(0, 50));
     } catch (err) {
-  if (err.name === 'AbortError') return;
-      console.error('Generation error:', err);
+      if (err.name === 'AbortError') return;
+      logger.error('Generation error:', err);
       let errorMessage = 'An unexpected error occurred.';
       if (err.message?.includes('429')) {
         errorMessage = 'Too many requests. Please wait a minute.';
@@ -361,7 +362,7 @@ export default function Home() {
       setShowOutput(true);
     } finally {
       setIsLoading(false);
-  if (generateAbortRef.current === controller) generateAbortRef.current = null;
+      if (generateAbortRef.current === controller) generateAbortRef.current = null;
     }
   }, [idea, directions, uploadedImage, isJsonMode]);
 
@@ -372,7 +373,7 @@ export default function Home() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Copy failed:', err);
+      logger.error('Copy failed:', err);
     }
   }, [generatedPrompt, error]);
 
@@ -394,7 +395,7 @@ export default function Home() {
           const { SpeechRecognition: PolyfillSpeechRecognition } = await import('web-speech-cognitive-services');
           SR = PolyfillSpeechRecognition;
         } catch (polyfillError) {
-          console.warn('Failed to load speech recognition polyfill:', polyfillError);
+          logger.warn('Failed to load speech recognition polyfill:', polyfillError);
         }
       }
 
@@ -421,7 +422,7 @@ export default function Home() {
         recognitionRef.current = null;
       };
       rec.onerror = (ev) => {
-        console.warn('Speech error', ev.error);
+        logger.warn('Speech error', ev.error);
         setDictatingTarget(null);
         recognitionRef.current = null;
       };
@@ -436,7 +437,7 @@ export default function Home() {
       };
       rec.start();
     } catch (err) {
-      console.error('Speech init failed', err);
+      logger.error('Speech init failed', err);
       setError('Failed to start voice input.');
     }
   }, [recognitionRef]);
@@ -471,16 +472,16 @@ export default function Home() {
         : surprisePrompt;
       setGeneratedPrompt(surprisePrompt);
       setShowOutput(true);
-  setHistory((h) => [{
+      setHistory((h) => [{
         id: Date.now(),
         idea: 'Surprise Me',
         directions: '',
         prompt: promptPreview,
         promptEntry,
         fav: false
-  }, ...h].slice(0, 50));
+      }, ...h].slice(0, 50));
     } catch (err) {
-      console.error('Surprise Me error:', err);
+      logger.error('Surprise Me error:', err);
       setError(err.message || 'An unexpected error occurred.');
       setShowOutput(true);
     } finally {
@@ -509,7 +510,7 @@ export default function Home() {
   }, []);
 
   const copyPrompt = useCallback(async (text) => {
-    try { await navigator.clipboard.writeText(text); } catch {}
+    try { await navigator.clipboard.writeText(text); } catch { }
   }, []);
 
   const deleteEntry = useCallback((id) => {
@@ -591,7 +592,7 @@ export default function Home() {
         generateAbortRef.current = null;
       }
       if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch {}
+        try { recognitionRef.current.stop(); } catch { }
         recognitionRef.current = null;
       }
     };
@@ -609,12 +610,12 @@ export default function Home() {
 
       {mounted && <SpaceBackground />}
 
-  <div className="min-h-screen py-8 px-4 sm:py-12 lg:px-8 relative z-10 flex items-center justify-center">
+      <div className="min-h-screen py-8 px-4 sm:py-12 lg:px-8 relative z-10 flex items-center justify-center">
         <div className="max-w-4xl w-full mx-auto">
-      <div className={`glass-ui p-8 sm:p-12 lg:p-16 transition-opacity duration-1000 hover-lift ${mounted ? 'opacity-100 animate-slide-in' : 'opacity-0'}`}>
+          <div className={`glass-ui p-8 sm:p-12 lg:p-16 transition-opacity duration-1000 hover-lift ${mounted ? 'opacity-100 animate-slide-in' : 'opacity-0'}`}>
             <header className="text-center mb-12">
               <div className={`${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gradient mb-6 text-glow tracking-tight">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gradient mb-6 text-glow tracking-tight">
                   Prompt Generator
                 </h1>
                 <p className="text-lg sm:text-xl text-premium-200 max-w-2xl mx-auto leading-relaxed">
@@ -641,7 +642,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => toggleDictation('idea')}
-                      className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'idea' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`}
+                      className={`absolute bottom-3 right-3 w-9 h-9 rounded-full flex items-center justify-center border ${dictatingTarget === 'idea' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`}
                       aria-label="Voice input for idea"
                     >
                       {dictatingTarget === 'idea' ? <StopIcon /> : <MicIcon />}
@@ -668,7 +669,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => toggleDictation('directions')}
-                      className={`absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center border ${dictatingTarget === 'directions' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`}
+                      className={`absolute bottom-3 right-3 w-9 h-9 rounded-full flex items-center justify-center border ${dictatingTarget === 'directions' ? 'bg-red-500/90 border-red-400 text-white' : 'bg-premium-800/60 border-premium-700 text-premium-300 hover:bg-premium-700/70'}`}
                       aria-label="Voice input for directions"
                     >
                       {dictatingTarget === 'directions' ? <StopIcon /> : <MicIcon />}
@@ -709,11 +710,10 @@ export default function Home() {
                                 key={styleName}
                                 type="button"
                                 onClick={() => toggleStyle(styleName)}
-                                className={`w-full px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300 border text-center ${
-                                  activeStyles.has(styleName)
-                                    ? 'bg-accent-bright/90 border-accent-bright text-white shadow-lg shadow-accent-bright/25'
-                                    : 'bg-premium-700/80 border-premium-600 text-premium-200 hover:bg-premium-600/90 hover:border-premium-500 hover:text-premium-50'
-                                }`}
+                                className={`w-full px-3 py-2 text-xs font-medium rounded-lg transition-all duration-300 border text-center ${activeStyles.has(styleName)
+                                  ? 'bg-accent-bright/90 border-accent-bright text-white shadow-lg shadow-accent-bright/25'
+                                  : 'bg-premium-700/80 border-premium-600 text-premium-200 hover:bg-premium-600/90 hover:border-premium-500 hover:text-premium-50'
+                                  }`}
                               >
                                 {styleName}
                               </button>

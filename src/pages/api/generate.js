@@ -7,6 +7,7 @@ import { promises as fs } from 'fs';
 import he from 'he'; // For HTML entity encoding - install via npm install he
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 import { createHash } from 'crypto';
+import logger from '../../utils/logger';
 
 const rateLimiter = new RateLimiterMemory({ points: 5, duration: 60 }); // 5 requests per minute
 
@@ -246,14 +247,14 @@ export default async function handler(req, res) {
     // Check for API key in environment variables
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      console.error('OPENROUTER_API_KEY environment variable is not set');
+      logger.error('OPENROUTER_API_KEY environment variable is not set');
       return res.status(500).json({
         error: 'Server configuration error',
         message: 'API key is not configured. Please contact the administrator.'
       });
     }
 
-  // helpers hoisted at module scope: sanitizeToPrompt, parseJsonStrictish
+    // helpers hoisted at module scope: sanitizeToPrompt, parseJsonStrictish
 
     // New: JSON mode system prompt
     const jsonSystemPrompt = `You are an expert-level prompt engineer for advanced text-to-image and text-to-video generative AI. Your task is to take a user's core idea and expand it into a highly detailed, structured JSON object that defines a complete creative shot.
@@ -284,7 +285,7 @@ RULES:
         // Clean up temporary file
         await fs.unlink(imageFile.filepath);
       } catch (error) {
-        console.error('Error processing image:', error);
+        logger.error('Error processing image:', error);
         return res.status(500).json({
           error: 'Image processing error',
           message: 'Failed to process the uploaded image. Please try again.'
@@ -294,7 +295,7 @@ RULES:
 
     // Combine user inputs into a single prompt
     let userPrompt = '';
-    
+
     if (imageFile && (!idea || idea.length === 0) && (!directions || directions.length === 0)) {
       // Image only - recreate the photo
       userPrompt = 'Please analyze this image and create a detailed prompt to recreate it as closely as possible for AI image generation.';
@@ -361,7 +362,7 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
     };
 
     // Add user message with or without image
-  if (imageBase64) {
+    if (imageBase64) {
       requestBody.messages.push({
         role: 'user',
         content: [
@@ -409,7 +410,7 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
       const errorData = await openRouterResponse.json().catch(() => ({}));
 
       // Log error for debugging (don't expose internal errors to client)
-      console.error('OpenRouter API Error:', {
+      logger.error('OpenRouter API Error:', {
         status: openRouterResponse.status,
         statusText: openRouterResponse.statusText,
         error: errorData
@@ -444,7 +445,7 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
 
     // Validate response structure
     if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-      console.error('Invalid OpenRouter API response structure:', data);
+      logger.error('Invalid OpenRouter API response structure:', data);
       return res.status(500).json({
         error: 'Invalid response',
         message: 'Received an invalid response from the AI service. Please try again.'
@@ -456,7 +457,7 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
     if (isJsonMode) {
       finalPrompt = parseJsonStrictish(rawContent);
       if (!finalPrompt) {
-        console.error('AI returned invalid JSON:', rawContent);
+        logger.error('AI returned invalid JSON:', rawContent);
         return res.status(500).json({
           error: 'Invalid response',
           message: 'The AI service returned a malformed JSON response. Please try again.'
@@ -483,7 +484,7 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
 
   } catch (error) {
     // Log the full error for debugging
-    console.error('API Route Error:', error);
+    logger.error('API Route Error:', error);
 
     // Handle specific error types first
     if (error?.statusCode === 413 || error?.code === 'PAYLOAD_TOO_LARGE') {

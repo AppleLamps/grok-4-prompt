@@ -1,11 +1,13 @@
 // /pages/api/surprise.js
 // Requires: rate-limiter-flexible (already in package.json)
- // Dependency check + safe import
+// Dependency check + safe import
+import logger from '../../utils/logger';
+
 let RateLimiterMemory;
 try {
   ({ RateLimiterMemory } = require('rate-limiter-flexible'));
 } catch (e) {
-  console.error('[Dependency missing] rate-limiter-flexible is required for rate limiting. Install with: npm install rate-limiter-flexible');
+  logger.error('[Dependency missing] rate-limiter-flexible is required for rate limiting. Install with: npm install rate-limiter-flexible');
 }
 
 import { createHash } from 'crypto';
@@ -122,9 +124,9 @@ const sanitizeToPrompt = (raw) => {
     // 4. Normalize whitespace
     t = t.replace(/\s+/g, ' ').trim();
 
-  // 5. Strict length enforcement (500-1200 chars)
-  const MAX_LENGTH = 1200;
-  const MIN_LENGTH = 500;
+    // 5. Strict length enforcement (500-1200 chars)
+    const MAX_LENGTH = 1200;
+    const MIN_LENGTH = 500;
     if (t.length > MAX_LENGTH) {
       t = t.slice(0, MAX_LENGTH);
       const lastPeriod = t.lastIndexOf('. ');
@@ -144,7 +146,7 @@ const sanitizeToPrompt = (raw) => {
     }
     return t;
   } catch (e) {
-  const fallback = (raw || '').toString().trim().slice(0, 1200);
+    const fallback = (raw || '').toString().trim().slice(0, 1200);
     return fallback.length > 100 ? fallback : 'A stunning landscape with vibrant colors and incredible detail, featuring unique natural formations and atmospheric lighting.';
   }
 };
@@ -161,7 +163,7 @@ export default async function handler(req, res) {
       await rateLimiter.consume(key, 1);
     } else {
       // If dependency is missing, log and proceed without rate limiting (best-effort fallback)
-      console.warn('Rate limiting disabled because rate-limiter-flexible is not available.');
+      logger.warn('Rate limiting disabled because rate-limiter-flexible is not available.');
     }
   } catch {
     return res.status(429).json({
@@ -172,7 +174,7 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    console.error('OPENROUTER_API_KEY environment variable is not set');
+    logger.error('OPENROUTER_API_KEY environment variable is not set');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
@@ -223,8 +225,8 @@ export default async function handler(req, res) {
             content: 'Create an extraordinary image prompt now.',
           },
         ],
-  temperature: 1.2, // Balanced temperature for creativity without excessive verbosity
-  max_tokens: 400, // Increased to accommodate longer responses up to 1200 chars
+        temperature: 1.2, // Balanced temperature for creativity without excessive verbosity
+        max_tokens: 400, // Increased to accommodate longer responses up to 1200 chars
         top_p: 0.9, // Slightly more focused than before
         frequency_penalty: 0.5, // Discourage repetition
         presence_penalty: 0.4, // Encourage topic diversity
@@ -239,19 +241,19 @@ export default async function handler(req, res) {
       throw new Error(errorData.error?.message || `HTTP ${response.status}`);
     }
 
-  const data = await response.json();
+    const data = await response.json();
 
     const raw = data?.choices?.[0]?.message?.content ?? '';
     const generatedPrompt = sanitizeToPrompt(raw);
 
     if (!generatedPrompt) {
-      console.error('Model returned empty or malformed content after sanitization:', { raw_response: data?.choices?.[0]?.message?.content, sanitized_output: generatedPrompt });
+      logger.error('Model returned empty or malformed content after sanitization:', { raw_response: data?.choices?.[0]?.message?.content, sanitized_output: generatedPrompt });
       return res.status(500).json({ error: 'Empty or malformed response from model after processing.' });
     }
 
     res.status(200).json({ prompt: generatedPrompt, usage: data.usage || null });
   } catch (error) {
-    console.error('Surprise API Error:', error);
+    logger.error('Surprise API Error:', error);
     if (error.name === 'AbortError') {
       return res.status(504).json({ error: 'The AI service timed out. Please try again.' });
     }

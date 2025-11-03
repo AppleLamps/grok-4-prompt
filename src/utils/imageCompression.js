@@ -1,4 +1,5 @@
 // Dynamic import to keep initial bundle smaller; load only when needed
+import logger from './logger';
 
 /**
  * Compresses an image file before upload
@@ -21,23 +22,23 @@ export const compressImage = async (imageFile, options = {}) => {
 
     // Merge default options with user options
     const compressionOptions = { ...defaultOptions, ...options };
-    
+
     // Skip compression for small files (< 500KB)
     if (imageFile.size < 500 * 1024) {
-      console.log('File is small, skipping compression');
+      logger.log('File is small, skipping compression');
       return imageFile;
     }
 
-    console.log('Original file size:', (imageFile.size / 1024 / 1024).toFixed(2), 'MB');
-    
+    logger.log('Original file size:', (imageFile.size / 1024 / 1024).toFixed(2), 'MB');
+
     // Compress the image
     const compressedFile = await imageCompression(
       imageFile,
       compressionOptions
     );
-    
-    console.log('Compressed file size:', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
-    
+
+    logger.log('Compressed file size:', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
+
     // Convert back to File if needed (browser-image-compression returns a Blob)
     if (compressedFile instanceof Blob && !(compressedFile instanceof File)) {
       return new File(
@@ -46,10 +47,10 @@ export const compressImage = async (imageFile, options = {}) => {
         { type: compressionOptions.fileType }
       );
     }
-    
+
     return compressedFile;
   } catch (error) {
-    console.error('Error compressing image:', error);
+    logger.error('Error compressing image:', error);
     // Return original file if compression fails
     return imageFile;
   }
@@ -64,7 +65,7 @@ export const getImageDimensions = (file) => {
   return new Promise((resolve) => {
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
-    
+
     img.onload = () => {
       resolve({
         width: img.width,
@@ -72,12 +73,12 @@ export const getImageDimensions = (file) => {
       });
       URL.revokeObjectURL(objectUrl);
     };
-    
+
     img.onerror = () => {
       resolve({ width: 0, height: 0 });
       URL.revokeObjectURL(objectUrl);
     };
-    
+
     img.src = objectUrl;
   });
 };
