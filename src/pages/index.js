@@ -175,6 +175,7 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [dictatingTarget, setDictatingTarget] = useState(null);
   const [isJsonMode, setIsJsonMode] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false);
   const [showStylePresets, setShowStylePresets] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const imageObjectUrlRef = useRef(null);
@@ -303,6 +304,7 @@ export default function Home() {
         }
         formData.append('image', uploadedImage);
         formData.append('isJsonMode', String(isJsonMode));
+        formData.append('isTestMode', String(isTestMode));
         response = await fetch('/api/generate', { method: 'POST', body: formData, signal: controller.signal });
       } else {
         // JSON path for text-only
@@ -310,7 +312,7 @@ export default function Home() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
-          body: JSON.stringify({ idea: idea.trim(), directions: directions.trim() || undefined, isJsonMode })
+          body: JSON.stringify({ idea: idea.trim(), directions: directions.trim() || undefined, isJsonMode, isTestMode })
         });
       }
 
@@ -364,7 +366,7 @@ export default function Home() {
       setIsLoading(false);
       if (generateAbortRef.current === controller) generateAbortRef.current = null;
     }
-  }, [idea, directions, uploadedImage, isJsonMode]);
+  }, [idea, directions, uploadedImage, isJsonMode, isTestMode]);
 
   const handleCopy = useCallback(async () => {
     if (!generatedPrompt || error) return;
@@ -745,21 +747,39 @@ export default function Home() {
                 <div className="section-divider"></div>
 
                 <div className="flex items-center justify-end -mt-2">
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col text-right">
-                      <span className="text-sm font-medium text-premium-200">Emily&apos;s JSON Mode</span>
-                      <a href="https://x.com/IamEmily2050" target="_blank" rel="noopener noreferrer" className="text-xs text-premium-400 mt-1 hover:text-premium-300">𝕏 @IamEmily2050</a>
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
+                      <div className="flex flex-col text-right">
+                        <span className="text-sm font-medium text-premium-200">Emily&apos;s JSON Mode</span>
+                        <a href="https://x.com/IamEmily2050" target="_blank" rel="noopener noreferrer" className="text-xs text-premium-400 mt-1 hover:text-premium-300">𝕏 @IamEmily2050</a>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isJsonMode}
+                        onClick={() => setIsJsonMode((v) => !v)}
+                        className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${isJsonMode ? 'bg-amber-400/90' : 'bg-premium-800/60 border border-premium-700'}`}
+                        aria-label="Toggle Emily&apos;s JSON Mode"
+                      >
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isJsonMode ? 'translate-x-7' : 'translate-x-1'}`} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={isJsonMode}
-                      onClick={() => setIsJsonMode((v) => !v)}
-                      className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${isJsonMode ? 'bg-amber-400/90' : 'bg-premium-800/60 border border-premium-700'}`}
-                      aria-label="Toggle Emily&apos;s JSON Mode"
-                    >
-                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isJsonMode ? 'translate-x-7' : 'translate-x-1'}`} />
-                    </button>
+                    <div className="flex items-center gap-4">
+                      <div className="flex flex-col text-right">
+                        <span className="text-sm font-medium text-premium-200">Test Mode</span>
+                        <span className="text-xs text-premium-400 mt-1">Elysian Visions</span>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isTestMode}
+                        onClick={() => setIsTestMode((v) => !v)}
+                        className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${isTestMode ? 'bg-purple-500/90' : 'bg-premium-800/60 border border-premium-700'}`}
+                        aria-label="Toggle Test Mode"
+                      >
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isTestMode ? 'translate-x-7' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
