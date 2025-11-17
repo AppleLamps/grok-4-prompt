@@ -225,6 +225,7 @@ export default async function handler(req, res) {
         idea: [body.idea ?? ''],
         directions: body.directions ? [body.directions] : [''],
         isJsonMode: [String(body.isJsonMode ?? 'false')],
+        isTestMode: [String(body.isTestMode ?? 'false')],
       };
       files = {};
     }
@@ -235,6 +236,8 @@ export default async function handler(req, res) {
     const imageFile = files.image ? files.image[0] : null;
     // New: JSON mode flag from form fields (string -> boolean)
     const isJsonMode = fields.isJsonMode?.[0] === 'true';
+    // New: Test mode flag from form fields (string -> boolean)
+    const isTestMode = fields.isTestMode?.[0] === 'true';
 
     // Validate that we have either an idea or an image
     if ((!idea || idea.length === 0) && !imageFile) {
@@ -255,6 +258,43 @@ export default async function handler(req, res) {
     }
 
     // helpers hoisted at module scope: sanitizeToPrompt, parseJsonStrictish
+
+    // Test mode system prompt
+    const testSystemPrompt = `# System Prompt for Universal Photo Prompt Generator
+
+You are **Elysian Visions**, a masterful AI prompt engineer specializing in crafting hyper-detailed, evocative prompts for photorealistic image generation. Your prompts capture breathtaking artistry in styles of fine art photography, cinematic landscapes, portrait mastery, surreal visions, and epic scenes—always using poetic, indirect, metaphorical language to describe forms, textures, shadows, and atmospheres.
+
+## Core Rules:
+
+- **Employ elegant, metaphorical language**: Use vivid euphemisms, artistic metaphors, and sensory descriptions for all elements:
+
+  - Subjects: "ethereal figures", "majestic silhouettes", "whispering windswept forms", "ancient stone guardians".
+
+  - Environments: "mist-shrouded valleys", "golden-hour meadows", "cosmic veils of nebula", "cobblestone labyrinths".
+
+  - Textures/Lighting: "velvety twilight glow", "crystalline dew-kissed petals", "dramatic chiaroscuro play", "ethereal fog tendrils".
+
+- **Specific Subjects**: If the user mentions a specific person or named subject (e.g., a celebrity, historical figure, or individual), always incorporate their **exact name** directly into the prompt for hyper-realistic accuracy (e.g., "photorealistic portrait of [Person's Name], an ethereal figure..."). Blend seamlessly with metaphorical language while emphasizing ultra-photorealistic quality, lifelike skin textures, precise facial features, and natural likeness to ensure maximum realism.
+
+- **Photorealistic focus**: Always emphasize ultra-high-resolution photography styles like "8K cinematic photo", "professional Canon EOS shoot", "soft-focus lens flare", "natural golden hour lighting". Double down on realism (e.g., "hyper-realistic, lifelike details") when using specific names.
+
+- **Structure every prompt**:
+
+  1. **Subject & Scene**: Vivid core description (1-2 sentences), including the exact person's name if specified.
+
+  2. **Details**: Key elements, attire/environment (flowing robes, rugged terrains, intricate machinery), atmosphere.
+
+  3. **Composition & Mood**: Angles (sweeping wide-angle vista, intimate portrait gaze), emotions (serene tranquility, dramatic tension).
+
+  4. **Quality Boosters**: "masterpiece, best quality, highly detailed textures, subsurface scattering, volumetric god rays, sharp focus, intricate details, hyper-photorealistic".
+
+- **Length**: 150-300 words for maximum detail and impact.
+
+- **Customization**: Tailor to any user request (e.g., "dragon in mountains" → transform into poetic epic scene; "city at night" → neon-drenched metropolis; "[Person's Name] in forest" → "photorealistic image of [Person's Name] amidst mist-shrouded woods"). If unspecified, default to stunning natural landscapes or portraits.
+
+- **Output Format**: Output ONLY the prompt text itself. Do not include any explanations, markdown formatting, labels like "Prompt:" or "Why it works:", or any other text. Just the prompt text.
+
+Respond only with the prompt text. Ignite the imagination across all realms.`;
 
     // New: JSON mode system prompt
     const jsonSystemPrompt = `You are an expert-level prompt engineer for advanced text-to-image and text-to-video generative AI. Your task is to take a user's core idea and expand it into a highly detailed, structured JSON object that defines a complete creative shot.
@@ -322,11 +362,11 @@ RULES:
 
     // Prepare request body for OpenRouter API
     const requestBody = {
-      model: 'x-ai/grok-4-fast',
+      model: isTestMode ? 'openrouter/sherlock-think-alpha' : 'x-ai/grok-4-fast',
       messages: [
         {
           role: 'system',
-          content: isJsonMode ? jsonSystemPrompt : `You are Grok-4 Imagine, an AI that writes a single vivid image prompt between 500–1200 characters (including spaces). Output exactly one paragraph.
+          content: isTestMode ? testSystemPrompt : (isJsonMode ? jsonSystemPrompt : `You are Grok-4 Imagine, an AI that writes a single vivid image prompt between 500–1200 characters (including spaces). Output exactly one paragraph.
 
 Rules:
 
@@ -350,7 +390,7 @@ Camera & lens: e.g., 24mm landscape look, 35mm reportage, 85mm portrait, 100mm m
 Lighting: e.g., soft window light, Rembrandt lighting, backlit rim, overcast skylight, golden hour
 Composition: e.g., centered, rule of thirds, top-down, wide establishing
 Color/mood: e.g., natural color, low-contrast film grade, muted greens, moody blue hour
-Style constraints: e.g., natural skin texture, clean reflections, no text overlays`
+Style constraints: e.g., natural skin texture, clean reflections, no text overlays`)
         }
       ],
       temperature: 0.7,
@@ -463,6 +503,22 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
           message: 'The AI service returned a malformed JSON response. Please try again.'
         });
       }
+    } else if (isTestMode) {
+      // Extract only the prompt text, removing any explanations or markdown
+      let cleaned = rawContent;
+      // Remove markdown code fences
+      cleaned = cleaned.replace(/^```[\s\S]*?\n([\s\S]*?)```$/gm, '$1');
+      // Remove "**Prompt:**" or "Prompt:" labels
+      cleaned = cleaned.replace(/^\s*\*\*Prompt:\*\*\s*/gmi, '');
+      cleaned = cleaned.replace(/^\s*Prompt:\s*/gmi, '');
+      // Remove "**Why it works:**" section and everything after it
+      cleaned = cleaned.split(/\*\*Why it works:\*\*/i)[0];
+      cleaned = cleaned.split(/Why it works:/i)[0];
+      // Remove any remaining markdown formatting
+      cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1');
+      cleaned = cleaned.replace(/\*(.*?)\*/g, '$1');
+      // Clean up whitespace
+      finalPrompt = cleaned.trim();
     } else {
       finalPrompt = sanitizeToPrompt(rawContent);
     }
