@@ -362,7 +362,7 @@ RULES:
 
     // Prepare request body for OpenRouter API
     const requestBody = {
-      model: isTestMode ? 'openrouter/sherlock-think-alpha' : 'x-ai/grok-4-fast',
+      model: isTestMode ? 'openrouter/sherlock-think-alpha' : 'x-ai/x-ai/grok-4.1-fast',
       messages: [
         {
           role: 'system',
