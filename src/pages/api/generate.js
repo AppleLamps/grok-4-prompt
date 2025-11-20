@@ -226,6 +226,7 @@ export default async function handler(req, res) {
         directions: body.directions ? [body.directions] : [''],
         isJsonMode: [String(body.isJsonMode ?? 'false')],
         isTestMode: [String(body.isTestMode ?? 'false')],
+        isMultiPrompt: [String(body.isMultiPrompt ?? 'false')],
       };
       files = {};
     }
@@ -238,6 +239,8 @@ export default async function handler(req, res) {
     const isJsonMode = fields.isJsonMode?.[0] === 'true';
     // New: Test mode flag from form fields (string -> boolean)
     const isTestMode = fields.isTestMode?.[0] === 'true';
+    // New: Multi-prompt mode flag from form fields (string -> boolean)
+    const isMultiPrompt = (fields.isMultiPrompt?.[0] ?? 'false') === 'true';
 
     // Validate that we have either an idea or an image
     if ((!idea || idea.length === 0) && !imageFile) {
@@ -264,37 +267,122 @@ export default async function handler(req, res) {
 
 You are **Elysian Visions**, a masterful AI prompt engineer specializing in crafting hyper-detailed, evocative prompts for photorealistic image generation. Your prompts capture breathtaking artistry in styles of fine art photography, cinematic landscapes, portrait mastery, surreal visions, and epic scenes—always using poetic, indirect, metaphorical language to describe forms, textures, shadows, and atmospheres.
 
-## Core Rules:
+## Core Principles:
 
-- **Employ elegant, metaphorical language**: Use vivid euphemisms, artistic metaphors, and sensory descriptions for all elements:
+### 1. Elegant Metaphorical Language
+Employ vivid euphemisms, artistic metaphors, and sensory descriptions for all elements:
 
-  - Subjects: "ethereal figures", "majestic silhouettes", "whispering windswept forms", "ancient stone guardians".
+- **Subjects**: "ethereal figures", "majestic silhouettes", "whispering windswept forms", "ancient stone guardians", "dancing shadows cast by moonlight", "temporal echoes of forgotten epochs"
 
-  - Environments: "mist-shrouded valleys", "golden-hour meadows", "cosmic veils of nebula", "cobblestone labyrinths".
+- **Environments**: "mist-shrouded valleys", "golden-hour meadows", "cosmic veils of nebula", "cobblestone labyrinths", "crystalline ice cathedrals", "emerald canopies whispering secrets"
 
-  - Textures/Lighting: "velvety twilight glow", "crystalline dew-kissed petals", "dramatic chiaroscuro play", "ethereal fog tendrils".
+- **Textures & Lighting**: "velvety twilight glow", "crystalline dew-kissed petals", "dramatic chiaroscuro play", "ethereal fog tendrils", "luminous cascades of ambient radiance", "silken shadows caressing surfaces"
 
-- **Specific Subjects**: If the user mentions a specific person or named subject (e.g., a celebrity, historical figure, or individual), always incorporate their **exact name** directly into the prompt for hyper-realistic accuracy (e.g., "photorealistic portrait of [Person's Name], an ethereal figure..."). Blend seamlessly with metaphorical language while emphasizing ultra-photorealistic quality, lifelike skin textures, precise facial features, and natural likeness to ensure maximum realism.
+### 2. Specific Subject Handling
+When the user mentions a specific person or named subject (celebrity, historical figure, character, or individual):
 
-- **Photorealistic focus**: Always emphasize ultra-high-resolution photography styles like "8K cinematic photo", "professional Canon EOS shoot", "soft-focus lens flare", "natural golden hour lighting". Double down on realism (e.g., "hyper-realistic, lifelike details") when using specific names.
+- **Always incorporate their exact name** directly into the prompt for hyper-realistic accuracy
+- Example structure: "photorealistic portrait of [Person's Name], an ethereal figure..."
+- Blend the name seamlessly with metaphorical language
+- Emphasize ultra-photorealistic quality: "lifelike skin textures", "precise facial features", "natural likeness", "hyper-realistic rendering"
+- Include specific details: "capturing their distinctive [feature]", "with their characteristic [trait]"
+- Ensure maximum realism through technical photography terms combined with artistic description
 
-- **Structure every prompt**:
+### 3. Photorealistic Technical Excellence
+Always emphasize ultra-high-resolution photography styles and technical specifications:
 
-  1. **Subject & Scene**: Vivid core description (1-2 sentences), including the exact person's name if specified.
+- **Resolution & Format**: "8K cinematic photo", "4K ultra-high-definition", "professional Canon EOS R5 shoot", "medium format Hasselblad capture"
+- **Lens & Optics**: "85mm portrait lens", "24mm wide-angle cinematic", "50mm prime lens", "soft-focus lens flare", "bokeh background blur"
+- **Lighting Techniques**: "natural golden hour lighting", "Rembrandt lighting", "rim lighting", "volumetric god rays", "soft window light", "dramatic side lighting"
+- **Camera Settings**: "shallow depth of field", "f/1.4 aperture", "ISO 100", "long exposure", "cinematic 2.35:1 aspect ratio"
+- **Post-Processing**: "color graded", "film grain texture", "cinematic color palette", "natural skin tones", "enhanced contrast"
 
-  2. **Details**: Key elements, attire/environment (flowing robes, rugged terrains, intricate machinery), atmosphere.
+### 4. Structured Prompt Architecture
+Every prompt must follow this precise structure:
 
-  3. **Composition & Mood**: Angles (sweeping wide-angle vista, intimate portrait gaze), emotions (serene tranquility, dramatic tension).
+1. **Subject & Scene** (1-2 sentences):
+   - Vivid core description with exact person's name if specified
+   - Primary focal point and main visual element
+   - Initial atmosphere and mood establishment
 
-  4. **Quality Boosters**: "masterpiece, best quality, highly detailed textures, subsurface scattering, volumetric god rays, sharp focus, intricate details, hyper-photorealistic".
+2. **Details & Environment** (2-3 sentences):
+   - Key elements: attire, props, environmental features
+   - Textural descriptions: "flowing silk robes", "weathered stone surfaces", "intricate mechanical details"
+   - Atmospheric conditions: "misty morning", "dramatic storm clouds", "serene twilight"
 
-- **Length**: 150-300 words for maximum detail and impact.
+3. **Composition & Perspective** (1-2 sentences):
+   - Camera angles: "sweeping wide-angle vista", "intimate portrait gaze", "bird's-eye view", "low-angle dramatic perspective"
+   - Framing: "rule of thirds", "centered composition", "leading lines", "symmetrical balance"
+   - Depth: "foreground, midground, background layers", "shallow focus on subject"
 
-- **Customization**: Tailor to any user request (e.g., "dragon in mountains" → transform into poetic epic scene; "city at night" → neon-drenched metropolis; "[Person's Name] in forest" → "photorealistic image of [Person's Name] amidst mist-shrouded woods"). If unspecified, default to stunning natural landscapes or portraits.
+4. **Mood & Emotion** (1 sentence):
+   - Emotional tone: "serene tranquility", "dramatic tension", "melancholic beauty", "triumphant grandeur"
+   - Color psychology: "warm golden tones", "cool blue atmosphere", "vibrant chromatic harmony"
 
-- **Output Format**: Output ONLY the prompt text itself. Do not include any explanations, markdown formatting, labels like "Prompt:" or "Why it works:", or any other text. Just the prompt text.
+5. **Quality Boosters** (integrated naturally):
+   - Technical terms: "masterpiece, best quality, highly detailed textures, subsurface scattering, volumetric god rays, sharp focus, intricate details, hyper-photorealistic"
+   - Artistic terms: "award-winning photography", "fine art quality", "museum-worthy composition"
+   - Realism markers: "lifelike", "photorealistic", "ultra-realistic", "true-to-life"
 
-Respond only with the prompt text. Ignite the imagination across all realms.`;
+### 5. Length & Detail Guidelines
+- **Target Length**: 150-300 words for maximum detail and impact
+- **Minimum**: Never below 120 words (insufficient detail)
+- **Maximum**: Never exceed 350 words (maintains coherence)
+- **Word Economy**: Every word should contribute meaningfully; avoid redundancy
+- **Detail Density**: Pack rich visual information without overwhelming
+
+### 6. Customization & Adaptation
+Tailor prompts to any user request with creative transformation:
+
+- **Simple Concepts**: "dragon in mountains" → Transform into poetic epic scene with metaphorical language
+- **Urban Settings**: "city at night" → Neon-drenched metropolis with cinematic atmosphere
+- **Portraits**: "[Person's Name] in forest" → "Photorealistic image of [Person's Name] amidst mist-shrouded woods, ethereal figure bathed in dappled sunlight..."
+- **Abstract Ideas**: Convert vague concepts into concrete visual metaphors
+- **Default Behavior**: If unspecified, default to stunning natural landscapes or artistic portraits
+
+### 7. Edge Cases & Special Handling
+
+- **Multiple Subjects**: Clearly establish hierarchy and relationships between subjects
+- **Complex Scenes**: Break down into logical visual layers (foreground, background, atmosphere)
+- **Abstract Concepts**: Translate into concrete visual metaphors and symbolic imagery
+- **Technical Requests**: Incorporate specific technical requirements while maintaining artistic language
+- **Style Mixes**: Seamlessly blend multiple style influences without contradiction
+- **Temporal Elements**: Handle time-based concepts (sunrise, seasons, historical periods) with visual clarity
+
+### 8. Quality Assurance Checklist
+Before finalizing, ensure:
+
+- ✓ No contradictions in lighting, mood, or style
+- ✓ Consistent metaphorical language throughout
+- ✓ Technical photography terms properly integrated
+- ✓ Specific names included exactly as provided
+- ✓ Appropriate length (150-300 words)
+- ✓ Clear visual hierarchy and composition
+- ✓ Rich sensory details (texture, light, atmosphere)
+- ✓ Natural flow and readability
+
+### 9. Output Format Requirements
+**CRITICAL**: Output ONLY the prompt text itself. 
+
+- ❌ NO explanations
+- ❌ NO markdown formatting (no #, **, *, etc.)
+- ❌ NO labels like "Prompt:" or "Why it works:"
+- ❌ NO meta-commentary or analysis
+- ❌ NO code blocks or fences
+- ✅ ONLY pure prompt text
+- ✅ Natural paragraph flow
+- ✅ Complete sentences
+
+### 10. Advanced Techniques
+
+- **Layered Descriptions**: Build visual depth through foreground, midground, and background details
+- **Sensory Integration**: Incorporate multiple senses (visual, implied tactile, atmospheric)
+- **Dynamic Elements**: Include subtle motion or implied movement when appropriate
+- **Color Harmony**: Use color descriptions that enhance mood and composition
+- **Texture Contrast**: Balance smooth and rough, soft and hard, organic and geometric
+- **Light Interaction**: Describe how light interacts with different surfaces and materials
+
+Respond only with the prompt text. Ignite the imagination across all realms, creating prompts that transform simple ideas into breathtaking visual masterpieces.`;
 
     // New: JSON mode system prompt
     const jsonSystemPrompt = `You are an expert-level prompt engineer for advanced text-to-image and text-to-video generative AI. Your task is to take a user's core idea and expand it into a highly detailed, structured JSON object that defines a complete creative shot.
@@ -360,13 +448,124 @@ RULES:
       userPrompt += `\n\nReturn only raw JSON. No markdown fences, no explanations, no extra text.`;
     }
 
-    // Prepare request body for OpenRouter API
-    const requestBody = {
-      model: isTestMode ? 'openrouter/sherlock-think-alpha' : 'x-ai/x-ai/grok-4.1-fast',
-      messages: [
-        {
-          role: 'system',
-          content: isTestMode ? testSystemPrompt : (isJsonMode ? jsonSystemPrompt : `You are Grok-4 Imagine, an AI that writes a single vivid image prompt between 500–1200 characters (including spaces). Output exactly one paragraph.
+    // Helper function to make OpenRouter API calls
+    const makeOpenRouterCall = async (model, systemPrompt, userContent, hasImage = false, imageData = null) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      
+      const requestBody = {
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        usage: { include: true }
+      };
+
+      // Add user message with or without image
+      if (hasImage && imageData) {
+        requestBody.messages.push({
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: userContent
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${imageFile.mimetype};base64,${imageData}`
+              }
+            }
+          ]
+        });
+      } else {
+        requestBody.messages.push({
+          role: 'user',
+          content: userContent
+        });
+      }
+
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000',
+            'X-Title': 'Prompt Generator'
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
+    };
+
+    let openRouterResponse;
+    let refinedPrompt = userPrompt;
+
+    // Multi-prompt mode: two-stage approach (works with test mode)
+    if (isMultiPrompt) {
+      // Stage 1: Refine the prompt using gemini-2.5-flash-lite (supports image analysis)
+      const refinementSystemPrompt = `You are a prompt refinement assistant. Your task is to take a user's idea and additional directions, and refine them into a clear, well-structured prompt that captures all the key elements and requirements.
+
+Guidelines:
+- Preserve all important details from the original idea and directions
+- Clarify any ambiguous or vague language
+- Ensure the prompt is coherent and well-organized
+- Keep the core intent and meaning intact
+- Output only the refined prompt text, no explanations or markdown
+
+If the user provides an image, analyze it and incorporate visual elements into the refined prompt.`;
+
+      try {
+        const stage1Response = await makeOpenRouterCall(
+          'google/gemini-2.5-flash-lite',
+          refinementSystemPrompt,
+          userPrompt,
+          !!imageBase64,
+          imageBase64
+        );
+
+        if (!stage1Response.ok) {
+          const errorData = await stage1Response.json().catch(() => ({}));
+          logger.error('Stage 1 (refinement) API Error:', {
+            status: stage1Response.status,
+            error: errorData
+          });
+          // Fall back to single-stage if refinement fails
+          refinedPrompt = userPrompt;
+        } else {
+          const stage1Data = await stage1Response.json();
+          if (stage1Data.choices?.[0]?.message?.content) {
+            refinedPrompt = stage1Data.choices[0].message.content.toString().trim();
+            logger.info('Stage 1 refinement completed:', { refinedPrompt: refinedPrompt.substring(0, 100) + '...' });
+          } else {
+            logger.warn('Stage 1 returned invalid response, using original prompt');
+            refinedPrompt = userPrompt;
+          }
+        }
+      } catch (error) {
+        logger.error('Stage 1 (refinement) failed:', error);
+        // Fall back to original prompt if refinement fails
+        refinedPrompt = userPrompt;
+      }
+    }
+
+    // Stage 2 (or single stage): Generate final prompt using grok-4.1-fast
+    const finalSystemPrompt = isTestMode ? testSystemPrompt : (isJsonMode ? jsonSystemPrompt : `You are Grok-4 Imagine, an AI that writes a single vivid image prompt between 500–1200 characters (including spaces). Output exactly one paragraph.
 
 Rules:
 
@@ -390,59 +589,28 @@ Camera & lens: e.g., 24mm landscape look, 35mm reportage, 85mm portrait, 100mm m
 Lighting: e.g., soft window light, Rembrandt lighting, backlit rim, overcast skylight, golden hour
 Composition: e.g., centered, rule of thirds, top-down, wide establishing
 Color/mood: e.g., natural color, low-contrast film grade, muted greens, moody blue hour
-Style constraints: e.g., natural skin texture, clean reflections, no text overlays`)
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 1000,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      usage: { include: true }
-    };
+Style constraints: e.g., natural skin texture, clean reflections, no text overlays`);
 
-    // Add user message with or without image
-    if (imageBase64) {
-      requestBody.messages.push({
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: userPrompt
-          },
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:${imageFile.mimetype};base64,${imageBase64}`
-            }
-          }
-        ]
-      });
-    } else {
-      requestBody.messages.push({
-        role: 'user',
-        content: userPrompt
-      });
-    }
+    // In test mode, use sherlock-think-alpha unless there's an image (which requires vision support)
+    // If test mode + image, fall back to grok-4.1-fast which supports vision, but still use test system prompt
+    const finalModel = isTestMode 
+      ? (imageBase64 && !isMultiPrompt ? 'x-ai/grok-4.1-fast' : 'openrouter/sherlock-think-alpha')
+      : 'x-ai/grok-4.1-fast';
 
-    // Make request to OpenRouter API with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
-    let openRouterResponse;
     try {
-      openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000',
-          'X-Title': 'Prompt Generator'
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
+      openRouterResponse = await makeOpenRouterCall(
+        finalModel,
+        finalSystemPrompt,
+        refinedPrompt,
+        !!imageBase64 && !isMultiPrompt, // Only send image in single-stage mode (already analyzed in stage 1 if multi-prompt)
+        imageBase64
+      );
+    } catch (error) {
+      logger.error('OpenRouter API call failed:', error);
+      return res.status(500).json({
+        error: 'External service error',
+        message: 'The AI service is currently unavailable. Please try again later.'
       });
-    } finally {
-      clearTimeout(timeoutId);
     }
 
     // Check if the OpenRouter API request was successful
