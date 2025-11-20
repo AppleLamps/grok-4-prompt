@@ -591,11 +591,8 @@ Composition: e.g., centered, rule of thirds, top-down, wide establishing
 Color/mood: e.g., natural color, low-contrast film grade, muted greens, moody blue hour
 Style constraints: e.g., natural skin texture, clean reflections, no text overlays`);
 
-    // In test mode, use sherlock-think-alpha unless there's an image (which requires vision support)
-    // If test mode + image, fall back to grok-4.1-fast which supports vision, but still use test system prompt
-    const finalModel = isTestMode 
-      ? (imageBase64 && !isMultiPrompt ? 'x-ai/grok-4.1-fast' : 'openrouter/sherlock-think-alpha')
-      : 'x-ai/grok-4.1-fast';
+    // Always use Grok 4.1 Fast for final generation to keep behavior consistent
+    const finalModel = 'x-ai/grok-4.1-fast';
 
     try {
       openRouterResponse = await makeOpenRouterCall(
