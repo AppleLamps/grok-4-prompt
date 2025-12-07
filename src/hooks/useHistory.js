@@ -2,23 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import logger from '../utils/logger';
 
 const HISTORY_KEY = 'pg_history';
-let lzModulePromise = null;
-
-async function compressIfLarge(text, maxBytes = 5 * 1024) {
-  try {
-    const bytes = new TextEncoder().encode(text);
-    if (bytes.length <= maxBytes) {
-      return { compressed: false, data: text };
-    }
-    if (!lzModulePromise) lzModulePromise = import('lz-string');
-    const lz = await lzModulePromise;
-    const compressed = lz.compressToUTF16(text);
-    return { compressed: true, data: compressed };
-  } catch (error) {
-    logger.warn('Failed to compress history entry', error);
-    return { compressed: false, data: text };
-  }
-}
 
 export default function useHistory() {
   const [history, setHistory] = useState([]);
@@ -45,16 +28,12 @@ export default function useHistory() {
   }, [history]);
 
   const addEntry = useCallback(async ({ idea = '', directions = '', prompt = '' }) => {
-    const promptEntry = await compressIfLarge(prompt, 5 * 1024);
-    const promptPreview = prompt.length > 512 ? `${prompt.slice(0, 512)}…` : prompt;
-
     setHistory((h) => [
       {
         id: Date.now(),
         idea,
         directions,
-        prompt: promptPreview,
-        promptEntry,
+        prompt,
         fav: false,
       },
       ...h,

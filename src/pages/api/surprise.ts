@@ -1,6 +1,34 @@
+import type { NextApiHandler } from 'next';
 import logger from '../../utils/logger';
 import { SURPRISE_SYSTEM_PROMPT } from '../../config/prompts';
 import { makeRateKey, rateLimiter } from '../../utils/api-helpers';
+import {
+  makeOpenRouterCall,
+  mapOpenRouterError,
+  sendOpenRouterError,
+  type JsonSchemaWrapper,
+  type JsonSchemaResponseFormat,
+  type OpenRouterRequestBody,
+} from '../../services/openRouterService';
+
+interface PromptTextPayload {
+  prompt: string;
+}
+
+type StructuredPayload = PromptTextPayload;
+
+interface ChatCompletionChoice {
+  message?: { content?: unknown };
+}
+
+interface ChatCompletionResponse {
+  choices?: ChatCompletionChoice[];
+  usage?: unknown;
+}
+
+type SurpriseResponse =
+  | { prompt: string; usage: unknown }
+  | { error: string; message?: string };
 
 const PROMPT_ONLY_SCHEMA = {
   name: 'prompt_response',
@@ -16,49 +44,49 @@ const PROMPT_ONLY_SCHEMA = {
     required: ['prompt'],
   },
   strict: true,
-};
+} satisfies JsonSchemaWrapper;
 
-const extractMessageText = (content) => {
+const extractMessageText = (content: unknown): string => {
   if (typeof content === 'string') return content;
   if (Array.isArray(content)) {
     return content
-      .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+      .map((part) => (typeof (part as { text?: unknown })?.text === 'string' ? (part as { text?: string }).text : ''))
       .join('')
       .trim();
   }
   if (content && typeof content === 'object') {
+    const candidate = (content as { text?: unknown }).text;
+    if (typeof candidate === 'string') return candidate;
     return JSON.stringify(content);
   }
-  if (content && typeof content.text === 'string') return content.text;
   return '';
 };
 
-const parseStructuredContent = (content) => {
+const parseStructuredContent = (content: unknown): StructuredPayload => {
   const raw = extractMessageText(content);
   if (!raw) throw new Error('Empty AI response');
-  return JSON.parse(raw);
+  return JSON.parse(raw) as StructuredPayload;
 };
 
-const ensureTextPrompt = (payload) => {
-  if (!payload || typeof payload !== 'object' || typeof payload.prompt !== 'string') {
+const ensureTextPrompt = (payload: StructuredPayload): string => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload) || typeof (payload as PromptTextPayload).prompt !== 'string') {
     throw new Error('Invalid structured prompt payload');
   }
-  return payload.prompt.trim();
+  return (payload as PromptTextPayload).prompt.trim();
 };
 
-export default async function handler(req, res) {
+const handler: NextApiHandler<SurpriseResponse> = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Rate limiting - 5 requests per minute per client (IP+UA hash)
   try {
     const key = makeRateKey(req);
     await rateLimiter.consume(key, 1);
   } catch {
     return res.status(429).json({
       error: 'Too many requests',
-      message: 'Please wait before trying again.'
+      message: 'Please wait before trying again.',
     });
   }
 
@@ -69,67 +97,48 @@ export default async function handler(req, res) {
   }
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
-    const responseFormat = {
+    const responseFormat: JsonSchemaResponseFormat = {
       type: 'json_schema',
       json_schema: PROMPT_ONLY_SCHEMA,
     };
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000',
-        'X-Title': 'Prompt Generator - Surprise Me'
-      },
-      body: JSON.stringify({
-        model: 'x-ai/grok-4.1-fast', // Using Grok-4.1-fast
-        messages: [
-          {
-            role: 'system',
-            content: SURPRISE_SYSTEM_PROMPT,
-          },
-          {
-            role: 'user',
-            // Simple user prompt, as all guidance is in the system prompt
-            content: 'Create an extraordinary image prompt now.',
-          },
-        ],
-        temperature: 1.2,
-        max_tokens: 400,
-        top_p: 0.9,
-        frequency_penalty: 0.5,
-        presence_penalty: 0.4,
-        usage: { include: true },
-        response_format: responseFormat,
-      }),
-      signal: controller.signal,
+    const requestBody: OpenRouterRequestBody = {
+      model: 'x-ai/grok-4.1-fast',
+      messages: [
+        {
+          role: 'system',
+          content: SURPRISE_SYSTEM_PROMPT,
+        },
+        {
+          role: 'user',
+          content: 'Create an extraordinary image prompt now.',
+        },
+      ],
+      temperature: 1.2,
+      max_tokens: 400,
+      top_p: 0.9,
+      frequency_penalty: 0.5,
+      presence_penalty: 0.4,
+      usage: { include: true },
+      response_format: responseFormat,
+    };
+
+    const response = await makeOpenRouterCall({
+      apiKey,
+      body: requestBody,
+      title: 'Prompt Generator - Surprise Me',
     });
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorInfo = await mapOpenRouterError(response);
       logger.error('OpenRouter API Error (surprise):', {
         status: response.status,
-        statusText: response.statusText,
-        error: errorData,
+        details: errorInfo.details,
       });
-
-      if (response.status === 401) {
-        return res.status(500).json({ error: 'Authentication error', message: 'Invalid API credentials. Please contact the administrator.' });
-      }
-      if (response.status === 429) {
-        return res.status(429).json({ error: 'Rate limit exceeded', message: 'Too many requests. Please wait a moment before trying again.' });
-      }
-      if (response.status === 402) {
-        return res.status(500).json({ error: 'Billing issue', message: 'Service temporarily unavailable. Please try again later.' });
-      }
-      return res.status(500).json({ error: 'External service error', message: 'The AI service is currently unavailable. Please try again later.' });
+      return sendOpenRouterError(res, errorInfo);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as ChatCompletionResponse;
 
     if (!data?.choices?.[0]?.message?.content) {
       logger.error('Invalid OpenRouter API response structure (surprise):', data);
@@ -139,7 +148,7 @@ export default async function handler(req, res) {
       });
     }
 
-    let parsedPayload;
+    let parsedPayload: StructuredPayload;
     try {
       parsedPayload = parseStructuredContent(data.choices[0].message.content);
     } catch (parseError) {
@@ -150,7 +159,7 @@ export default async function handler(req, res) {
       });
     }
 
-    let finalPrompt;
+    let finalPrompt: string;
     try {
       finalPrompt = ensureTextPrompt(parsedPayload);
     } catch (validationError) {
@@ -168,12 +177,15 @@ export default async function handler(req, res) {
       });
     }
 
-    res.status(200).json({ prompt: finalPrompt, usage: data.usage || null });
-  } catch (error) {
+    return res.status(200).json({ prompt: finalPrompt, usage: data.usage || null });
+  } catch (error: any) {
     logger.error('Surprise API Error:', error);
-    if (error.name === 'AbortError') {
+    if (error?.name === 'AbortError') {
       return res.status(504).json({ error: 'The AI service timed out. Please try again.' });
     }
-    res.status(500).json({ error: 'Failed to generate a surprise prompt.', details: error.message });
+    return res.status(500).json({ error: 'Failed to generate a surprise prompt.', message: error?.message });
   }
-}
+};
+
+export default handler;
+

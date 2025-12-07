@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, memo, useRef } from 'react';
+import { useState, useCallback, useEffect, memo, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { compressImage } from '../utils/imageCompression';
@@ -10,6 +10,7 @@ import { CopyIcon, CheckIcon, HelpIcon, HistoryIcon, MicIcon, StopIcon, ImageIco
 import usePromptGenerator from '../hooks/usePromptGenerator';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import useHistory from '../hooks/useHistory';
+import { STYLE_PRESETS } from '../config/styles';
 
 // Lazy load modals for better performance
 const HelpModal = dynamic(() => import('../components/HelpModal'), {
@@ -21,31 +22,6 @@ const HistoryModal = dynamic(() => import('../components/HistoryModal'), {
   ssr: false,
   loading: () => null
 });
-
-
-// Style presets with detailed prompts (module scope to avoid re-creating per render)
-const STYLE_PRESETS = {
-  'Realistic': 'photorealistic rendering with natural lighting, high detail, and lifelike textures',
-  'Cartoon': 'vibrant cartoon style with bold colors, simplified forms, and playful character design',
-  'Anime': 'anime art style with expressive characters, dynamic poses, and detailed backgrounds',
-  'Oil Painting': 'traditional oil painting technique with rich textures, visible brushstrokes, and classical composition',
-  'Cyberpunk': 'cyberpunk aesthetic with neon lighting, dark urban atmosphere, futuristic technology, and dystopian elements',
-  'Fantasy': 'fantasy art style with magical elements, ethereal lighting, mystical creatures, and enchanted environments',
-  'Steampunk': 'steampunk design with brass machinery, Victorian elements, steam-powered technology, and industrial aesthetics',
-  'Sci-Fi': 'science fiction style with advanced technology, sleek designs, futuristic architecture, and space-age elements',
-  'Cinematic': 'cinematic composition with dramatic lighting, film-like quality, and professional cinematography',
-  'Dark': 'dark and moody atmosphere with deep shadows, muted colors, and mysterious ambiance',
-  'Ethereal': 'ethereal and dreamlike quality with soft lighting, flowing elements, and otherworldly beauty',
-  'Vintage': 'vintage aesthetic with retro colors, classic styling, and nostalgic atmosphere',
-  'Watercolor': 'watercolor painting style with soft washes, flowing pigments, delicate transparency, and organic color bleeding',
-  'Minimalist': 'minimalist design with clean lines, simple forms, negative space, and refined elegance',
-  'Abstract': 'abstract art style with non-representational forms, bold geometric shapes, and expressive color relationships',
-  'Surreal': 'surrealist aesthetic with dreamlike imagery, impossible scenarios, and fantastical visual metaphors',
-  'Gothic': 'gothic atmosphere with dramatic architecture, ornate details, mysterious shadows, and romantic darkness',
-  'Retro': 'retro design with mid-century modern elements, bold patterns, vintage typography, and nostalgic color palettes',
-  'Impressionist': 'impressionist painting style with loose brushwork, light effects, vibrant colors, and atmospheric quality',
-  'Documentary': 'documentary photography style with authentic moments, natural lighting, and journalistic storytelling approach'
-};
 
 
 // Memoized components for better performance
@@ -155,6 +131,16 @@ export default function Home() {
 
   const stylePresets = STYLE_PRESETS;
 
+  const directionsWithStyles = useMemo(() => {
+    const base = (directions || '').trim();
+    const styleText = Array.from(activeStyles)
+      .map((name) => stylePresets?.[name])
+      .filter(Boolean)
+      .join(', ');
+    if (base && styleText) return `${base}, ${styleText}`;
+    return base || styleText || '';
+  }, [directions, activeStyles, stylePresets]);
+
   const {
     history,
     addEntry,
@@ -235,10 +221,7 @@ export default function Home() {
       setCompressedSize(compressedFile.size);
       setUploadedImage(compressedFile);
       // update preview to compressed version
-      if (imageObjectUrlRef.current) {
-        URL.revokeObjectURL(imageObjectUrlRef.current);
-        imageObjectUrlRef.current = null;
-      }
+      URL.revokeObjectURL(firstUrl);
       const compressedUrl = URL.createObjectURL(compressedFile);
       imageObjectUrlRef.current = compressedUrl;
       setImagePreview(compressedUrl);
@@ -493,6 +476,10 @@ export default function Home() {
                     >
                       {dictatingTarget === 'directions' ? <StopIcon /> : <MicIcon />}
                     </button>
+                  </div>
+                  <div className="mt-2 text-xs text-premium-400">
+                    <span className="font-semibold text-premium-200">Will send:</span>{' '}
+                    {directionsWithStyles || 'None'}
                   </div>
 
                   {/* Style Preset Buttons */}
