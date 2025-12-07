@@ -283,9 +283,9 @@ const handler: NextApiHandler<GenerateResponse> = async (req, res) => {
         maxFileSize: 10 * 1024 * 1024, // 10MB limit
         keepExtensions: true,
       });
-      const parsed = await form.parse(req);
-      fields = parsed.fields;
-      files = parsed.files;
+      const [parsedFields, parsedFiles] = await form.parse(req);
+      fields = parsedFields;
+      files = parsedFiles;
     } else {
       const body = await readJsonBody(req, 1_000_000);
       fields = {
