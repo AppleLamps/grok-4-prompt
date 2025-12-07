@@ -1,11 +1,14 @@
-import { useState, useCallback, useEffect, useMemo, memo, useRef } from 'react';
+import { useState, useCallback, useEffect, memo, useRef } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { compressImage } from '../utils/imageCompression';
 import useParallax from '../hooks/useParallax';
 import logger from '../utils/logger';
 import SpaceBackground from '../components/SpaceBackground';
-import { CopyIcon, CheckIcon, HelpIcon, HistoryIcon, MicIcon, StopIcon, UploadIcon, ImageIcon, TrashIcon } from '../components/IconComponents';
+import { CopyIcon, CheckIcon, HelpIcon, HistoryIcon, MicIcon, StopIcon, ImageIcon, TrashIcon } from '../components/IconComponents';
+import usePromptGenerator from '../hooks/usePromptGenerator';
+import useSpeechRecognition from '../hooks/useSpeechRecognition';
+import useHistory from '../hooks/useHistory';
 
 // Lazy load modals for better performance
 const HelpModal = dynamic(() => import('../components/HelpModal'), {
@@ -17,35 +20,6 @@ const HistoryModal = dynamic(() => import('../components/HistoryModal'), {
   ssr: false,
   loading: () => null
 });
-
-// Lazy compression helpers for large history entries
-let lzModulePromise = null;
-async function compressIfLarge(text, maxBytes = 5 * 1024) {
-  try {
-    const bytes = new TextEncoder().encode(text);
-    if (bytes.length <= maxBytes) {
-      return { compressed: false, data: text };
-    }
-    if (!lzModulePromise) lzModulePromise = import('lz-string');
-    const lz = await lzModulePromise;
-    const compressed = lz.compressToUTF16(text);
-    return { compressed: true, data: compressed };
-  } catch {
-    return { compressed: false, data: text };
-  }
-}
-
-async function decompressIfNeeded(entry) {
-  try {
-    if (!entry || typeof entry !== 'object') return '';
-    if (!entry.compressed) return String(entry.data ?? '');
-    if (!lzModulePromise) lzModulePromise = import('lz-string');
-    const lz = await lzModulePromise;
-    return lz.decompressFromUTF16(String(entry.data ?? '')) || '';
-  } catch {
-    return '';
-  }
-}
 
 
 // Style presets with detailed prompts (module scope to avoid re-creating per render)
@@ -76,6 +50,7 @@ const STYLE_PRESETS = {
 // Memoized components for better performance
 const ImageUpload = memo(({ onImageUpload, imagePreview, onImageRemove, isCompressing, compressionProgress, originalSize, compressedSize }) => {
   const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef(null);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -130,7 +105,7 @@ const ImageUpload = memo(({ onImageUpload, imagePreview, onImageRemove, isCompre
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onClick={() => document.getElementById('image-input').click()}
+      onClick={() => fileInputRef.current?.click()}
     >
       <ImageIcon className="text-premium-400 mb-2" />
       <p className="text-premium-300 mb-1">Drop an image here or click to upload</p>
@@ -141,7 +116,7 @@ const ImageUpload = memo(({ onImageUpload, imagePreview, onImageRemove, isCompre
         </div>
       )}
       <input
-        id="image-input"
+        ref={fileInputRef}
         type="file"
         accept="image/*"
         onChange={(e) => e.target.files[0] && onImageUpload(e.target.files[0])}
@@ -156,11 +131,7 @@ ImageUpload.displayName = 'ImageUpload';
 export default function Home() {
   const [idea, setIdea] = useState('');
   const [directions, setDirections] = useState('');
-  const [generatedPrompt, setGeneratedPrompt] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [isSurpriseLoading, setIsSurpriseLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [showOutput, setShowOutput] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -171,42 +142,56 @@ export default function Home() {
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [originalSize, setOriginalSize] = useState(0);
   const [compressedSize, setCompressedSize] = useState(0);
-  const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [dictatingTarget, setDictatingTarget] = useState(null);
   const [isJsonMode, setIsJsonMode] = useState(false);
   const [isTestMode, setIsTestMode] = useState(false);
   const [isVideoPrompt, setIsVideoPrompt] = useState(false);
   const [showStylePresets, setShowStylePresets] = useState(false);
-  const [isClient, setIsClient] = useState(false);
   const imageObjectUrlRef = useRef(null);
-  const generateAbortRef = useRef(null);
+  const ideaRef = useRef(null);
+  const directionsRef = useRef(null);
+  const outputRef = useRef(null);
 
-  // Style presets with detailed prompts
   const stylePresets = STYLE_PRESETS;
 
-  // Memoized values for better performance
-  const recognitionRef = useRef(null);
+  const {
+    history,
+    addEntry,
+    toggleFavorite: toggleFavoriteEntry,
+    deleteEntry: deleteHistoryEntry,
+    clearHistory: clearHistoryEntries,
+  } = useHistory();
+
+  const {
+    generatedPrompt,
+    setGeneratedPrompt,
+    showOutput,
+    setShowOutput,
+    isLoading,
+    error,
+    setError,
+    handleSubmit,
+  } = usePromptGenerator({
+    idea,
+    directions,
+    uploadedImage,
+    isJsonMode,
+    isTestMode,
+    isVideoPrompt,
+    activeStyles,
+    stylePresets,
+    addHistoryEntry: addEntry,
+  });
+
+  const { dictatingTarget, toggleDictation } = useSpeechRecognition({
+    onIdeaAppend: (text) => setIdea((v) => (v ? `${v} ` : '') + text),
+    onDirectionsAppend: (text) => setDirections((v) => (v ? `${v} ` : '') + text),
+    onError: setError,
+  });
 
   useEffect(() => {
     setMounted(true);
-    setIsClient(true);
   }, []);
-
-  // Load history on mount - only on client
-  useEffect(() => {
-    if (!isClient) return;
-    try {
-      const saved = JSON.parse(localStorage.getItem('pg_history') || '[]');
-      if (Array.isArray(saved)) setHistory(saved);
-    } catch { }
-  }, [isClient]);
-
-  // Persist history - only on client
-  useEffect(() => {
-    if (!isClient) return;
-    localStorage.setItem('pg_history', JSON.stringify(history));
-  }, [history, isClient]);
 
   // Parallax effect - call hook at top level, but only activate when mounted
   useParallax();
@@ -265,7 +250,7 @@ export default function Home() {
       setIsCompressing(false);
       setCompressionProgress(0);
     }
-  }, []);
+  }, [setError]);
 
   const handleImageRemove = useCallback(() => {
     setUploadedImage(null);
@@ -275,100 +260,6 @@ export default function Home() {
       imageObjectUrlRef.current = null;
     }
   }, []);
-
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!idea.trim() && !uploadedImage) {
-      setError('Please describe your idea or upload an image.');
-      return;
-    }
-
-    // cancel in-flight request
-    if (generateAbortRef.current) {
-      generateAbortRef.current.abort();
-      generateAbortRef.current = null;
-    }
-    const controller = new AbortController();
-    generateAbortRef.current = controller;
-
-    setIsLoading(true);
-    setError('');
-    setShowOutput(false);
-
-    try {
-      let response;
-      if (uploadedImage) {
-        const formData = new FormData();
-        formData.append('idea', idea.trim());
-        if (directions.trim()) {
-          formData.append('directions', directions.trim());
-        }
-        formData.append('image', uploadedImage);
-        formData.append('isJsonMode', String(isJsonMode));
-        formData.append('isTestMode', String(isTestMode));
-        formData.append('isVideoPrompt', String(isVideoPrompt));
-        response = await fetch('/api/generate', { method: 'POST', body: formData, signal: controller.signal });
-      } else {
-        // JSON path for text-only
-        response = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({ idea: idea.trim(), directions: directions.trim() || undefined, isJsonMode, isTestMode, isVideoPrompt })
-        });
-      }
-
-      const ct = response.headers.get('content-type') || '';
-      let data;
-      if (ct.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        if (!response.ok) throw new Error(text || 'Failed to generate prompt');
-        // If OK but not JSON, wrap minimally
-        data = { prompt: text };
-      }
-      if (!response.ok) {
-        throw new Error(data?.message || 'Failed to generate prompt');
-      }
-
-      const displayPrompt = isJsonMode
-        ? JSON.stringify(data.prompt, null, 2)
-        : (data.prompt || '').toString();
-
-      // Compress if large for storage; keep a small preview for UI listing
-      const promptEntry = await compressIfLarge(displayPrompt, 5 * 1024);
-      const promptPreview = displayPrompt.length > 512
-        ? displayPrompt.slice(0, 512) + '…'
-        : displayPrompt;
-
-      setGeneratedPrompt(displayPrompt);
-      setShowOutput(true);
-
-      setHistory((h) => [{
-        id: Date.now(),
-        idea,
-        directions,
-        prompt: promptPreview,
-        promptEntry,
-        fav: false
-      }, ...h].slice(0, 50));
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      logger.error('Generation error:', err);
-      let errorMessage = 'An unexpected error occurred.';
-      if (err.message?.includes('429')) {
-        errorMessage = 'Too many requests. Please wait a minute.';
-      } else if (err.message?.includes('500')) {
-        errorMessage = 'Server error. Try again later.';
-      }
-      setError(errorMessage);
-      setShowOutput(true);
-    } finally {
-      setIsLoading(false);
-      if (generateAbortRef.current === controller) generateAbortRef.current = null;
-    }
-  }, [idea, directions, uploadedImage, isJsonMode, isTestMode, isVideoPrompt]);
 
   const handleCopy = useCallback(async () => {
     if (!generatedPrompt || error) return;
@@ -388,70 +279,13 @@ export default function Home() {
     }
   }, [handleSubmit, isLoading]);
 
-  const toggleDictation = useCallback(async (target) => {
-    if (typeof window === 'undefined') return;
-
-    try {
-      let SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      if (!SR) {
-        try {
-          const { SpeechRecognition: PolyfillSpeechRecognition } = await import('web-speech-cognitive-services');
-          SR = PolyfillSpeechRecognition;
-        } catch (polyfillError) {
-          logger.warn('Failed to load speech recognition polyfill:', polyfillError);
-        }
-      }
-
-      if (!SR) {
-        setError('Speech recognition is not supported in this browser.');
-        return;
-      }
-
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-        recognitionRef.current = null;
-        setDictatingTarget(null);
-        return;
-      }
-
-      const rec = new SR();
-      recognitionRef.current = rec;
-      rec.lang = 'en-US';
-      rec.interimResults = false;
-      rec.maxAlternatives = 1;
-      rec.onstart = () => setDictatingTarget(target);
-      rec.onend = () => {
-        setDictatingTarget(null);
-        recognitionRef.current = null;
-      };
-      rec.onerror = (ev) => {
-        logger.warn('Speech error', ev.error);
-        setDictatingTarget(null);
-        recognitionRef.current = null;
-      };
-      rec.onresult = (ev) => {
-        const transcript = ev.results?.[0]?.[0]?.transcript || '';
-        if (!transcript) return;
-        if (target === 'idea') {
-          setIdea((v) => (v ? v + ' ' : '') + transcript);
-        } else if (target === 'directions') {
-          setDirections((v) => (v ? v + ' ' : '') + transcript);
-        }
-      };
-      rec.start();
-    } catch (err) {
-      logger.error('Speech init failed', err);
-      setError('Failed to start voice input.');
-    }
-  }, [recognitionRef]);
-
   const handleSurpriseMe = useCallback(async () => {
     setIsSurpriseLoading(true);
     setError('');
     setShowOutput(false);
     setIdea('');
     setDirections('');
+    setActiveStyles(new Set());
 
     try {
       const response = await fetch('/api/surprise', {
@@ -470,20 +304,15 @@ export default function Home() {
         throw new Error(data?.message || 'Failed to get a surprise prompt.');
       }
       const surprisePrompt = (data.prompt || '').toString();
-      const promptEntry = await compressIfLarge(surprisePrompt, 5 * 1024);
-      const promptPreview = surprisePrompt.length > 512
-        ? surprisePrompt.slice(0, 512) + '…'
-        : surprisePrompt;
       setGeneratedPrompt(surprisePrompt);
       setShowOutput(true);
-      setHistory((h) => [{
-        id: Date.now(),
-        idea: 'Surprise Me',
-        directions: '',
-        prompt: promptPreview,
-        promptEntry,
-        fav: false
-      }, ...h].slice(0, 50));
+      if (addEntry) {
+        await addEntry({
+          idea: 'Surprise Me',
+          directions: '',
+          prompt: surprisePrompt,
+        });
+      }
     } catch (err) {
       logger.error('Surprise Me error:', err);
       setError(err.message || 'An unexpected error occurred.');
@@ -496,90 +325,52 @@ export default function Home() {
   const handleClearAll = useCallback(() => {
     setIdea('');
     setDirections('');
+    setActiveStyles(new Set());
     setGeneratedPrompt('');
+    setError('');
     setShowOutput(false);
     handleImageRemove();
-    document.getElementById('idea')?.focus();
-  }, [handleImageRemove]);
+    ideaRef.current?.focus();
+  }, [handleImageRemove, setError, setGeneratedPrompt, setShowOutput]);
 
-  const toggleFavorite = useCallback((id) => {
-    setHistory((h) => h.map((e) => (e.id === id ? { ...e, fav: !e.fav } : e)));
-  }, []);
+  const toggleFavorite = useCallback((id) => toggleFavoriteEntry(id), [toggleFavoriteEntry]);
 
   const loadEntry = useCallback((entry) => {
     setIdea(entry.idea || '');
     setDirections(entry.directions || '');
     setShowHistory(false);
-    document.getElementById('idea')?.focus();
+    ideaRef.current?.focus();
   }, []);
 
   const copyPrompt = useCallback(async (text) => {
     try { await navigator.clipboard.writeText(text); } catch { }
   }, []);
 
-  const deleteEntry = useCallback((id) => {
-    setHistory((h) => h.filter((e) => e.id !== id));
-  }, []);
+  const deleteEntry = useCallback((id) => deleteHistoryEntry(id), [deleteHistoryEntry]);
 
   const clearHistory = useCallback(() => {
-    setHistory([]);
-  }, []);
+    clearHistoryEntries();
+  }, [clearHistoryEntries]);
 
   // Toggle style preset function
   const toggleStyle = useCallback((styleName) => {
-    const stylePrompt = stylePresets[styleName];
-    if (!stylePrompt) return;
-
-    setActiveStyles(prev => {
-      const newActiveStyles = new Set(prev);
-      const isActive = newActiveStyles.has(styleName);
-
-      if (isActive) {
-        newActiveStyles.delete(styleName);
+    if (!stylePresets[styleName]) return;
+    setActiveStyles((prev) => {
+      const next = new Set(prev);
+      if (next.has(styleName)) {
+        next.delete(styleName);
       } else {
-        newActiveStyles.add(styleName);
+        next.add(styleName);
       }
-
-      return newActiveStyles;
+      return next;
     });
-
-    setDirections(prev => {
-      const stylePrompt = stylePresets[styleName];
-      const isCurrentlyActive = activeStyles.has(styleName);
-
-      if (isCurrentlyActive) {
-        // Remove the style
-        let newDirections = prev;
-
-        // Remove the exact style prompt
-        newDirections = newDirections.replace(stylePrompt, '');
-
-        // Clean up any double commas, leading/trailing commas, and extra spaces
-        newDirections = newDirections
-          .replace(/,\s*,/g, ',')  // Remove double commas
-          .replace(/^,\s*/, '')    // Remove leading comma
-          .replace(/,\s*$/, '')    // Remove trailing comma
-          .replace(/\s+/g, ' ')    // Replace multiple spaces with single space
-          .trim();
-
-        return newDirections;
-      } else {
-        // Add the style
-        const newDirections = prev.trim();
-        if (newDirections === '') {
-          return stylePrompt;
-        } else {
-          return newDirections + ', ' + stylePrompt;
-        }
-      }
-    });
-  }, [stylePresets, activeStyles]);
+  }, [stylePresets]);
 
   // Smooth scroll when output appears
   useEffect(() => {
     if (showOutput) {
       requestAnimationFrame(() => {
-        document.getElementById('output-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        outputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
     }
   }, [showOutput]);
@@ -590,14 +381,6 @@ export default function Home() {
       if (imageObjectUrlRef.current) {
         URL.revokeObjectURL(imageObjectUrlRef.current);
         imageObjectUrlRef.current = null;
-      }
-      if (generateAbortRef.current) {
-        generateAbortRef.current.abort();
-        generateAbortRef.current = null;
-      }
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch { }
-        recognitionRef.current = null;
       }
     };
   }, []);
@@ -634,6 +417,7 @@ export default function Home() {
                   <label htmlFor="idea" className="label-text">Your Idea</label>
                   <div className="relative">
                     <textarea
+                      ref={ideaRef}
                       id="idea"
                       value={idea}
                       onChange={(e) => setIdea(e.target.value)}
@@ -641,6 +425,7 @@ export default function Home() {
                       placeholder="A futuristic city skyline at dusk..."
                       rows={4}
                       maxLength={1000}
+                      disabled={isLoading}
                     />
                     <div className="absolute left-3 bottom-3 text-xs text-premium-500 select-none">Up to 1000 characters</div>
                     <button
@@ -661,6 +446,7 @@ export default function Home() {
                   <label htmlFor="directions" className="label-text">Additional Directions <span className="optional-text">(optional)</span></label>
                   <div className="relative">
                     <textarea
+                      ref={directionsRef}
                       id="directions"
                       value={directions}
                       onChange={(e) => setDirections(e.target.value)}
@@ -668,6 +454,7 @@ export default function Home() {
                       placeholder="Style: cinematic, cyberpunk. Mood: mysterious, awe-inspiring..."
                       rows={3}
                       maxLength={500}
+                      disabled={isLoading}
                     />
                     <div className="absolute left-3 bottom-3 text-xs text-premium-500 select-none">Optional • up to 500 characters</div>
                     <button
@@ -836,7 +623,7 @@ export default function Home() {
               </form>
 
               {showOutput && (
-                <div id="output-section" className="animate-fade-in-up">
+                <div id="output-section" ref={outputRef} className="animate-fade-in-up">
                   <div className="section-divider"></div>
                   <div className="output-card hover-lift">
                     <div className="flex justify-between items-center p-5 border-b border-premium-600/30">

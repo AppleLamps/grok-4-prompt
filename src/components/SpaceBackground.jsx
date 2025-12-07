@@ -16,6 +16,7 @@ export default function SpaceBackground() {
   const shootingRef = useRef([]);
   const sizeRef = useRef({ w: 0, h: 0, dpr: 1 });
   const reducedRef = useRef(false);
+  const resizeTimerRef = useRef(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -184,13 +185,23 @@ export default function SpaceBackground() {
       rafRef.current = requestAnimationFrame(loop);
     };
 
+    const scheduleResize = () => {
+      if (resizeTimerRef.current) {
+        clearTimeout(resizeTimerRef.current);
+      }
+      resizeTimerRef.current = setTimeout(resize, 150);
+    };
+
     resize();
     rafRef.current = requestAnimationFrame(loop);
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', scheduleResize);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
-      window.removeEventListener('resize', resize);
+      if (resizeTimerRef.current) {
+        clearTimeout(resizeTimerRef.current);
+      }
+      window.removeEventListener('resize', scheduleResize);
       if (mq.removeEventListener) mq.removeEventListener('change', updateReduced);
       else if (mq.removeListener) mq.removeListener(updateReduced);
     };

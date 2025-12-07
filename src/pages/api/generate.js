@@ -8,8 +8,24 @@ import he from 'he'; // For HTML entity encoding - install via npm install he
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 import { createHash } from 'crypto';
 import logger from '../../utils/logger';
+import {
+  DEFAULT_SYSTEM_PROMPT,
+  JSON_SYSTEM_PROMPT,
+  REFINEMENT_SYSTEM_PROMPT,
+  TEST_SYSTEM_PROMPT,
+  VIDEO_SYSTEM_PROMPT,
+} from '../../config/prompts';
 
-const rateLimiter = new RateLimiterMemory({ points: 5, duration: 60 }); // 5 requests per minute
+// Singleton rate limiter; TODO: replace with Redis (e.g., Upstash) for production durability.
+const rateLimiter =
+  global.__pgRateLimiter ||
+  new RateLimiterMemory({
+    points: 5,
+    duration: 60,
+  }); // 5 requests per minute
+if (!global.__pgRateLimiter) {
+  global.__pgRateLimiter = rateLimiter;
+}
 
 // Helper: derive client IP robustly and rate-limiter key (IP + UA hashed)
 const getClientIp = (req) => {
@@ -107,83 +123,106 @@ const readJsonBody = async (req, maxBytes = 1_000_000) => {
   try { return JSON.parse(raw); } catch { return {}; }
 };
 
-// Hoisted helpers so regex are compiled once per worker
-const sanitizeToPrompt = (raw) => {
-  try {
-    let t = (raw || '').toString().trim();
-    t = t.replace(/^```(?:[a-zA-Z0-9]+)?\s*[\r\n]?([\s\S]*?)\s*```$/m, '$1').trim();
-    if (t.includes('---')) {
-      const parts = t.split(/\n?---+\n?/g).map(p => p.trim()).filter(Boolean);
-      if (parts.length) t = parts[parts.length - 1];
-    }
-    const labelMatch = t.match(/(?:^|\n)\s*(?:final\s*)?prompt[^:]*:\s*/i);
-    if (labelMatch) {
-      t = t.slice(labelMatch.index + labelMatch[0].length).trim();
-    }
-    t = t
-      .replace(/^#+\s*/gm, '')
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      .replace(/^[>\-\s]*\*/gm, '')
-      .replace(/^>\s*/gm, '');
-    t = t.replace(/\s+/g, ' ').trim();
-    if (t.length > 1200) {
-      t = t.slice(0, 1200);
-      const lastSpace = t.lastIndexOf(' ');
-      if (lastSpace > 0) t = t.slice(0, lastSpace);
-    }
-    return t;
-  } catch {
-    return (raw || '').toString().trim();
-  }
+const DEFAULT_PROMPT_SCHEMA = {
+  name: 'prompt_response',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      prompt: {
+        type: 'string',
+        description: 'Fully formatted prompt string for the user',
+      },
+    },
+    required: ['prompt'],
+  },
+  strict: true,
 };
 
-// Robust JSON extraction with fewer heavy attempts for perf
-const parseJsonStrictish = (raw) => {
-  if (!raw || typeof raw !== 'string') return null;
-  const tryParse = (s) => { try { return JSON.parse(s); } catch { return null; } };
+const JSON_MODE_SCHEMA = {
+  name: 'json_prompt_response',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      scene: { type: 'string' },
+      subjects: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            description: { type: 'string' },
+            position: { type: 'string' },
+            action: { type: 'string' },
+            color_palette: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+          required: ['description', 'position', 'action', 'color_palette'],
+        },
+      },
+      style: { type: 'string' },
+      color_palette: {
+        type: 'array',
+        items: { type: 'string' },
+      },
+      lighting: { type: 'string' },
+      mood: { type: 'string' },
+      background: { type: 'string' },
+      composition: { type: 'string' },
+      camera: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          angle: { type: 'string' },
+          lens: { type: 'string' },
+          'f-number': { type: 'string' },
+          ISO: { type: 'number' },
+          depth_of_field: { type: 'string' },
+        },
+        required: ['angle', 'lens', 'f-number', 'ISO', 'depth_of_field'],
+      },
+    },
+    required: ['scene', 'subjects', 'style', 'color_palette', 'lighting', 'mood', 'background', 'composition', 'camera'],
+  },
+  strict: true,
+};
 
-  let candidate = raw.trim().replace(/^\uFEFF/, '');
-  let parsed = tryParse(candidate);
-  if (parsed) return parsed;
-  const fenceMatch = candidate.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenceMatch) {
-    candidate = fenceMatch[1].trim();
-    parsed = tryParse(candidate);
-    if (parsed) return parsed;
+const extractMessageText = (content) => {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+      .join('')
+      .trim();
   }
-  const firstBrace = candidate.indexOf('{');
-  const lastBrace = candidate.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    candidate = candidate.slice(firstBrace, lastBrace + 1).trim();
-    parsed = tryParse(candidate);
-    if (parsed) return parsed;
+  if (content && typeof content === 'object') {
+    return JSON.stringify(content);
   }
-  candidate = candidate.replace(/[\u201C\u201D]/g, '"');
-  candidate = candidate.replace(/\r\n/g, '\n');
-  candidate = candidate.replace(/,\s*([}\]])/g, '$1');
-  parsed = tryParse(candidate);
-  if (parsed) return parsed;
-  for (let i = 1; i <= 6; i++) {
-    parsed = tryParse(candidate + '}'.repeat(i));
-    if (parsed) return parsed;
+  if (content && typeof content.text === 'string') return content.text;
+  return '';
+};
+
+const parseStructuredContent = (content) => {
+  const raw = extractMessageText(content);
+  if (!raw) throw new Error('Empty AI response');
+  return JSON.parse(raw);
+};
+
+const ensureTextPrompt = (payload) => {
+  if (!payload || typeof payload !== 'object' || typeof payload.prompt !== 'string') {
+    throw new Error('Invalid structured prompt payload');
   }
-  const maxAttempts = Math.min(candidate.length, 600);
-  for (let end = candidate.length; end > Math.max(0, candidate.length - maxAttempts); end--) {
-    const snippet = candidate.slice(0, end).trim();
-    if (snippet.length < 10) break;
-    let p = tryParse(snippet);
-    if (p) return p;
-    for (let j = 1; j <= 4; j++) {
-      p = tryParse(snippet + '}'.repeat(j));
-      if (p) return p;
-    }
+  return payload.prompt.trim();
+};
+
+const ensureJsonPrompt = (payload) => {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Invalid structured JSON payload');
   }
-  let fallback = candidate.replace(/\s*"[^"]+"\s*:\s*[^,}\]]+$/s, '').trim();
-  if (!fallback.endsWith('}')) fallback += '}';
-  parsed = tryParse(fallback);
-  if (parsed) return parsed;
-  return null;
+  return payload;
 };
 
 export default async function handler(req, res) {
@@ -263,131 +302,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // helpers hoisted at module scope: sanitizeToPrompt, parseJsonStrictish
-
-    // Test mode system prompt
-    const testSystemPrompt = `# System Prompt for Universal Photo Prompt Generator
-
-You are **Elysian Visions**, a masterful AI prompt engineer specializing in crafting hyper-detailed, evocative prompts for photorealistic image generation. Your prompts capture breathtaking artistry in styles of fine art photography, cinematic landscapes, portrait mastery, surreal visions, and epic scenes—always using poetic, indirect, metaphorical language to describe forms, textures, shadows, and atmospheres.
-
-## Core Principles:
-
-### 1. Elegant Metaphorical Language
-Employ vivid euphemisms, artistic metaphors, and sensory descriptions for all elements:
-
-- **Subjects**: "ethereal figures", "majestic silhouettes", "whispering windswept forms", "ancient stone guardians", "dancing shadows cast by moonlight", "temporal echoes of forgotten epochs"
-
-- **Environments**: "mist-shrouded valleys", "golden-hour meadows", "cosmic veils of nebula", "cobblestone labyrinths", "crystalline ice cathedrals", "emerald canopies whispering secrets"
-
-- **Textures & Lighting**: "velvety twilight glow", "crystalline dew-kissed petals", "dramatic chiaroscuro play", "ethereal fog tendrils", "luminous cascades of ambient radiance", "silken shadows caressing surfaces"
-
-### 2. Specific Subject Handling
-When the user mentions a specific person or named subject (celebrity, historical figure, character, or individual):
-
-- **Always incorporate their exact name** directly into the prompt for hyper-realistic accuracy
-- Example structure: "photorealistic portrait of [Person's Name], an ethereal figure..."
-- Blend the name seamlessly with metaphorical language
-- Emphasize ultra-photorealistic quality: "lifelike skin textures", "precise facial features", "natural likeness", "hyper-realistic rendering"
-- Include specific details: "capturing their distinctive [feature]", "with their characteristic [trait]"
-- Ensure maximum realism through technical photography terms combined with artistic description
-
-### 3. Photorealistic Technical Excellence
-Always emphasize ultra-high-resolution photography styles and technical specifications:
-
-- **Resolution & Format**: "8K cinematic photo", "4K ultra-high-definition", "professional Canon EOS R5 shoot", "medium format Hasselblad capture"
-- **Lens & Optics**: "85mm portrait lens", "24mm wide-angle cinematic", "50mm prime lens", "soft-focus lens flare", "bokeh background blur"
-- **Lighting Techniques**: "natural golden hour lighting", "Rembrandt lighting", "rim lighting", "volumetric god rays", "soft window light", "dramatic side lighting"
-- **Camera Settings**: "shallow depth of field", "f/1.4 aperture", "ISO 100", "long exposure", "cinematic 2.35:1 aspect ratio"
-- **Post-Processing**: "color graded", "film grain texture", "cinematic color palette", "natural skin tones", "enhanced contrast"
-
-### 4. Structured Prompt Architecture
-Every prompt must follow this precise structure:
-
-1. **Subject & Scene** (1-2 sentences):
-   - Vivid core description with exact person's name if specified
-   - Primary focal point and main visual element
-   - Initial atmosphere and mood establishment
-
-2. **Details & Environment** (2-3 sentences):
-   - Key elements: attire, props, environmental features
-   - Textural descriptions: "flowing silk robes", "weathered stone surfaces", "intricate mechanical details"
-   - Atmospheric conditions: "misty morning", "dramatic storm clouds", "serene twilight"
-
-3. **Composition & Perspective** (1-2 sentences):
-   - Camera angles: "sweeping wide-angle vista", "intimate portrait gaze", "bird's-eye view", "low-angle dramatic perspective"
-   - Framing: "rule of thirds", "centered composition", "leading lines", "symmetrical balance"
-   - Depth: "foreground, midground, background layers", "shallow focus on subject"
-
-4. **Mood & Emotion** (1 sentence):
-   - Emotional tone: "serene tranquility", "dramatic tension", "melancholic beauty", "triumphant grandeur"
-   - Color psychology: "warm golden tones", "cool blue atmosphere", "vibrant chromatic harmony"
-
-5. **Quality Boosters** (integrated naturally):
-   - Technical terms: "masterpiece, best quality, highly detailed textures, subsurface scattering, volumetric god rays, sharp focus, intricate details, hyper-photorealistic"
-   - Artistic terms: "award-winning photography", "fine art quality", "museum-worthy composition"
-   - Realism markers: "lifelike", "photorealistic", "ultra-realistic", "true-to-life"
-
-### 5. Length & Detail Guidelines
-- **Target Length**: 150-300 words for maximum detail and impact
-- **Minimum**: Never below 120 words (insufficient detail)
-- **Maximum**: Never exceed 350 words (maintains coherence)
-- **Word Economy**: Every word should contribute meaningfully; avoid redundancy
-- **Detail Density**: Pack rich visual information without overwhelming
-
-### 6. Customization & Adaptation
-Tailor prompts to any user request with creative transformation:
-
-- **Simple Concepts**: "dragon in mountains" → Transform into poetic epic scene with metaphorical language
-- **Urban Settings**: "city at night" → Neon-drenched metropolis with cinematic atmosphere
-- **Portraits**: "[Person's Name] in forest" → "Photorealistic image of [Person's Name] amidst mist-shrouded woods, ethereal figure bathed in dappled sunlight..."
-- **Abstract Ideas**: Convert vague concepts into concrete visual metaphors
-- **Default Behavior**: If unspecified, default to stunning natural landscapes or artistic portraits
-
-### 7. Edge Cases & Special Handling
-
-- **Multiple Subjects**: Clearly establish hierarchy and relationships between subjects
-- **Complex Scenes**: Break down into logical visual layers (foreground, background, atmosphere)
-- **Abstract Concepts**: Translate into concrete visual metaphors and symbolic imagery
-- **Technical Requests**: Incorporate specific technical requirements while maintaining artistic language
-- **Style Mixes**: Seamlessly blend multiple style influences without contradiction
-- **Temporal Elements**: Handle time-based concepts (sunrise, seasons, historical periods) with visual clarity
-
-### 8. Quality Assurance Checklist
-Before finalizing, ensure:
-
-- ✓ No contradictions in lighting, mood, or style
-- ✓ Consistent metaphorical language throughout
-- ✓ Technical photography terms properly integrated
-- ✓ Specific names included exactly as provided
-- ✓ Appropriate length (150-300 words)
-- ✓ Clear visual hierarchy and composition
-- ✓ Rich sensory details (texture, light, atmosphere)
-- ✓ Natural flow and readability
-
-### 9. Output Format Requirements
-**CRITICAL**: Output ONLY the prompt text itself. 
-
-- ❌ NO explanations
-- ❌ NO markdown formatting (no #, **, *, etc.)
-- ❌ NO labels like "Prompt:" or "Why it works:"
-- ❌ NO meta-commentary or analysis
-- ❌ NO code blocks or fences
-- ✅ ONLY pure prompt text
-- ✅ Natural paragraph flow
-- ✅ Complete sentences
-
-### 10. Advanced Techniques
-
-- **Layered Descriptions**: Build visual depth through foreground, midground, and background details
-- **Sensory Integration**: Incorporate multiple senses (visual, implied tactile, atmospheric)
-- **Dynamic Elements**: Include subtle motion or implied movement when appropriate
-- **Color Harmony**: Use color descriptions that enhance mood and composition
-- **Texture Contrast**: Balance smooth and rough, soft and hard, organic and geometric
-- **Light Interaction**: Describe how light interacts with different surfaces and materials
-
-Respond only with the prompt text. Ignite the imagination across all realms, creating prompts that transform simple ideas into breathtaking visual masterpieces.`;
-
-    // New: JSON mode system prompt
+    // System prompts are imported from src/config/prompts.js
     const jsonSystemPrompt = `You are an expert-level prompt engineer for advanced text-to-image and text-to-video generative AI. Your task is to take a user's core idea and expand it into a highly detailed, structured JSON object that defines a complete creative shot.
 
 
@@ -514,7 +429,7 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
     }
 
     // Helper function to make OpenRouter API calls
-    const makeOpenRouterCall = async (model, systemPrompt, userContent, hasImage = false, imageData = null) => {
+    const makeOpenRouterCall = async (model, systemPrompt, userContent, hasImage = false, imageData = null, responseFormat = null) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 20000);
       
@@ -533,6 +448,10 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
         presence_penalty: 0,
         usage: { include: true }
       };
+
+      if (responseFormat) {
+        requestBody.response_format = responseFormat;
+      }
 
       // Add user message with or without image
       if (hasImage && imageData) {
@@ -584,21 +503,10 @@ Style constraints: e.g., natural skin texture, clean reflections, no text overla
     // Multi-prompt mode: two-stage approach (works with test mode)
     if (isMultiPrompt) {
       // Stage 1: Refine the prompt using gemini-2.5-flash-lite (supports image analysis)
-      const refinementSystemPrompt = `You are a prompt refinement assistant. Your task is to take a user's idea and additional directions, and refine them into a clear, well-structured prompt that captures all the key elements and requirements.
-
-Guidelines:
-- Preserve all important details from the original idea and directions
-- Clarify any ambiguous or vague language
-- Ensure the prompt is coherent and well-organized
-- Keep the core intent and meaning intact
-- Output only the refined prompt text, no explanations or markdown
-
-If the user provides an image, analyze it and incorporate visual elements into the refined prompt.`;
-
       try {
         const stage1Response = await makeOpenRouterCall(
           'google/gemini-2.5-flash-lite',
-          refinementSystemPrompt,
+          REFINEMENT_SYSTEM_PROMPT,
           userPrompt,
           !!imageBase64,
           imageBase64
@@ -614,8 +522,9 @@ If the user provides an image, analyze it and incorporate visual elements into t
           refinedPrompt = userPrompt;
         } else {
           const stage1Data = await stage1Response.json();
-          if (stage1Data.choices?.[0]?.message?.content) {
-            refinedPrompt = stage1Data.choices[0].message.content.toString().trim();
+          const refined = extractMessageText(stage1Data.choices?.[0]?.message?.content);
+          if (refined) {
+            refinedPrompt = refined;
             logger.info('Stage 1 refinement completed:', { refinedPrompt: refinedPrompt.substring(0, 100) + '...' });
           } else {
             logger.warn('Stage 1 returned invalid response, using original prompt');
@@ -631,12 +540,17 @@ If the user provides an image, analyze it and incorporate visual elements into t
 
     // Stage 2 (or single stage): Generate final prompt using grok-4.1-fast
     const finalSystemPrompt = isJsonMode
-      ? jsonSystemPrompt
+      ? JSON_SYSTEM_PROMPT
       : isVideoPrompt
-        ? videoSystemPrompt
+        ? VIDEO_SYSTEM_PROMPT
         : isTestMode
-          ? testSystemPrompt
-          : defaultSystemPrompt;
+          ? TEST_SYSTEM_PROMPT
+          : DEFAULT_SYSTEM_PROMPT;
+
+    const responseFormat = {
+      type: 'json_schema',
+      json_schema: isJsonMode ? JSON_MODE_SCHEMA : DEFAULT_PROMPT_SCHEMA,
+    };
 
     // Always use Grok 4.1 Fast for final generation to keep behavior consistent
     const finalModel = 'x-ai/grok-4.1-fast';
@@ -647,7 +561,8 @@ If the user provides an image, analyze it and incorporate visual elements into t
         finalSystemPrompt,
         refinedPrompt,
         !!imageBase64 && !isMultiPrompt, // Only send image in single-stage mode (already analyzed in stage 1 if multi-prompt)
-        imageBase64
+        imageBase64,
+        responseFormat
       );
     } catch (error) {
       logger.error('OpenRouter API call failed:', error);
@@ -692,11 +607,9 @@ If the user provides an image, analyze it and incorporate visual elements into t
       }
     }
 
-    // Parse the response from OpenRouter
     const data = await openRouterResponse.json();
 
-    // Validate response structure
-    if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+    if (!data?.choices?.[0]?.message?.content) {
       logger.error('Invalid OpenRouter API response structure:', data);
       return res.status(500).json({
         error: 'Invalid response',
@@ -704,45 +617,34 @@ If the user provides an image, analyze it and incorporate visual elements into t
       });
     }
 
-    const rawContent = data.choices[0].message.content?.toString().trim() || '';
-    let finalPrompt;
-    if (isJsonMode) {
-      finalPrompt = parseJsonStrictish(rawContent);
-      if (!finalPrompt) {
-        logger.error('AI returned invalid JSON:', rawContent);
-        return res.status(500).json({
-          error: 'Invalid response',
-          message: 'The AI service returned a malformed JSON response. Please try again.'
-        });
-      }
-    } else if (isTestMode) {
-      // Extract only the prompt text, removing any explanations or markdown
-      let cleaned = rawContent;
-      // Remove markdown code fences
-      cleaned = cleaned.replace(/^```[\s\S]*?\n([\s\S]*?)```$/gm, '$1');
-      // Remove "**Prompt:**" or "Prompt:" labels
-      cleaned = cleaned.replace(/^\s*\*\*Prompt:\*\*\s*/gmi, '');
-      cleaned = cleaned.replace(/^\s*Prompt:\s*/gmi, '');
-      // Remove "**Why it works:**" section and everything after it
-      cleaned = cleaned.split(/\*\*Why it works:\*\*/i)[0];
-      cleaned = cleaned.split(/Why it works:/i)[0];
-      // Remove any remaining markdown formatting
-      cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1');
-      cleaned = cleaned.replace(/\*(.*?)\*/g, '$1');
-      // Clean up whitespace
-      finalPrompt = cleaned.trim();
-    } else {
-      finalPrompt = sanitizeToPrompt(rawContent);
+    let parsedPayload;
+    try {
+      parsedPayload = parseStructuredContent(data.choices[0].message.content);
+    } catch (parseError) {
+      logger.error('Failed to parse structured response from OpenRouter:', parseError);
+      return res.status(500).json({
+        error: 'Invalid response',
+        message: 'The AI service returned a malformed response. Please try again.'
+      });
     }
 
-    // Validate that we got actual content
-    if (!finalPrompt || (isJsonMode && typeof finalPrompt !== 'object')) {
+    let finalPrompt;
+    try {
+      finalPrompt = isJsonMode ? ensureJsonPrompt(parsedPayload) : ensureTextPrompt(parsedPayload);
+    } catch (validationError) {
+      logger.error('Structured response validation failed:', validationError);
+      return res.status(500).json({
+        error: 'Invalid response',
+        message: 'The AI service returned an invalid response. Please try again.'
+      });
+    }
+
+    if (!isJsonMode && !finalPrompt) {
       return res.status(500).json({
         error: 'Empty response',
         message: 'The AI service returned an empty response. Please try again with different input.'
       });
     }
-
     // Return successful response
     return res.status(200).json({
       success: true,
