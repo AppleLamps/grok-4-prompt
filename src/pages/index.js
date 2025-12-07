@@ -5,6 +5,7 @@ import { compressImage } from '../utils/imageCompression';
 import useParallax from '../hooks/useParallax';
 import logger from '../utils/logger';
 import SpaceBackground from '../components/SpaceBackground';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { CopyIcon, CheckIcon, HelpIcon, HistoryIcon, MicIcon, StopIcon, ImageIcon, TrashIcon } from '../components/IconComponents';
 import usePromptGenerator from '../hooks/usePromptGenerator';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
@@ -132,7 +133,7 @@ export default function Home() {
   const [idea, setIdea] = useState('');
   const [directions, setDirections] = useState('');
   const [isSurpriseLoading, setIsSurpriseLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedType, setCopiedType] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [uploadedImage, setUploadedImage] = useState(null);
@@ -261,16 +262,42 @@ export default function Home() {
     }
   }, []);
 
-  const handleCopy = useCallback(async () => {
-    if (!generatedPrompt || error) return;
+  const markCopied = useCallback((type) => {
+    setCopiedType(type);
+    setTimeout(() => setCopiedType(''), 2000);
+  }, []);
+
+  const copyText = useCallback(async (text, type) => {
+    if (!text || error) return;
     try {
-      await navigator.clipboard.writeText(generatedPrompt);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      markCopied(type);
     } catch (err) {
       logger.error('Copy failed:', err);
     }
-  }, [generatedPrompt, error]);
+  }, [error, markCopied]);
+
+  const handleCopyDefault = useCallback(() => {
+    copyText(generatedPrompt, 'default');
+  }, [copyText, generatedPrompt]);
+
+  const handleCopyJson = useCallback(() => {
+    copyText(generatedPrompt, 'json');
+  }, [copyText, generatedPrompt]);
+
+  const handleCopyScene = useCallback(() => {
+    if (!generatedPrompt || error) return;
+    let sceneText = generatedPrompt;
+    try {
+      const parsed = JSON.parse(generatedPrompt);
+      if (parsed && typeof parsed.scene === 'string') {
+        sceneText = parsed.scene;
+      }
+    } catch (parseErr) {
+      logger.warn('Scene copy JSON parse failed:', parseErr);
+    }
+    copyText(sceneText, 'scene');
+  }, [copyText, generatedPrompt, error]);
 
   const handleKeyDown = useCallback((e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isLoading) {
@@ -411,8 +438,9 @@ export default function Home() {
               </div>
             </header>
 
-            <main>
-              <form onSubmit={handleSubmit} className="space-y-8 mb-12" onKeyDown={handleKeyDown}>
+            <ErrorBoundary>
+              <main>
+                <form onSubmit={handleSubmit} className="space-y-8 mb-12" onKeyDown={handleKeyDown}>
                 <div>
                   <label htmlFor="idea" className="label-text">Your Idea</label>
                   <div className="relative">
@@ -626,12 +654,39 @@ export default function Home() {
                 <div id="output-section" ref={outputRef} className="animate-fade-in-up">
                   <div className="section-divider"></div>
                   <div className="output-card hover-lift">
-                    <div className="flex justify-between items-center p-5 border-b border-premium-600/30">
+                    <div className="flex justify-between items-center p-5 border-b border-premium-600/30 gap-3 flex-wrap">
                       <h3 className="text-lg font-semibold text-premium-100">Generated Prompt</h3>
                       {!error && generatedPrompt && (
-                        <button onClick={handleCopy} className={`copy-button ${copied ? 'copied' : ''}`} title="Copy to clipboard">
-                          {copied ? <CheckIcon /> : <CopyIcon />}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {isJsonMode ? (
+                            <>
+                              <button
+                                onClick={handleCopyJson}
+                                className={`copy-button px-3 py-2 text-sm flex items-center gap-2 ${copiedType === 'json' ? 'copied' : ''}`}
+                                title="Copy full JSON"
+                              >
+                                {copiedType === 'json' ? <CheckIcon /> : <CopyIcon />}
+                                <span className="hidden sm:inline">Copy JSON</span>
+                              </button>
+                              <button
+                                onClick={handleCopyScene}
+                                className={`copy-button px-3 py-2 text-sm flex items-center gap-2 ${copiedType === 'scene' ? 'copied' : ''}`}
+                                title="Copy only the scene field"
+                              >
+                                {copiedType === 'scene' ? <CheckIcon /> : <CopyIcon />}
+                                <span className="hidden sm:inline">Copy Scene</span>
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={handleCopyDefault}
+                              className={`copy-button ${copiedType === 'default' ? 'copied' : ''}`}
+                              title="Copy to clipboard"
+                            >
+                              {copiedType === 'default' ? <CheckIcon /> : <CopyIcon />}
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="p-5">
@@ -647,6 +702,7 @@ export default function Home() {
                 </div>
               )}
             </main>
+            </ErrorBoundary>
           </div>
           <footer className="text-center pt-12 space-y-2">
             <div className="section-divider mb-6"></div>
