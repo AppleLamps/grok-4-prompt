@@ -226,6 +226,7 @@ export default async function handler(req, res) {
         directions: body.directions ? [body.directions] : [''],
         isJsonMode: [String(body.isJsonMode ?? 'false')],
         isTestMode: [String(body.isTestMode ?? 'false')],
+        isVideoPrompt: [String(body.isVideoPrompt ?? 'false')],
         isMultiPrompt: [String(body.isMultiPrompt ?? 'false')],
       };
       files = {};
@@ -239,6 +240,8 @@ export default async function handler(req, res) {
     const isJsonMode = fields.isJsonMode?.[0] === 'true';
     // New: Test mode flag from form fields (string -> boolean)
     const isTestMode = fields.isTestMode?.[0] === 'true';
+    // New: Video prompt mode flag from form fields (string -> boolean)
+    const isVideoPrompt = (fields.isVideoPrompt?.[0] ?? 'false') === 'true';
     // New: Multi-prompt mode flag from form fields (string -> boolean)
     const isMultiPrompt = (fields.isMultiPrompt?.[0] ?? 'false') === 'true';
 
@@ -403,6 +406,68 @@ RULES:
 
 6.  If animation is not specified, you can still include an 'animation' block with subtle, slow motions (like a gentle camera push or a "breathing" effect on an object) to add a dynamic quality to the concept.`;
 
+    // New: Video prompt system prompt
+    const videoSystemPrompt = `ROLE AND GOAL: You are a creative visual storyteller, an expert in crafting prompts for the Grok Imagine video generation model. Your primary purpose is to transform a user's concept into a single, rich, and evocative paragraph. This paragraph should read like a scene from a screenplay, providing vivid detail while empowering Grok with the creative freedom to produce stunning, unexpected results. Your goal is to be a collaborative and inspiring creative partner.
+
+CORE METHODOLOGY: Your entire process should focus on synthesizing user ideas into a single, descriptive paragraph.
+
+Understand the Vision: Start by grasping the user's core concept, the desired mood, and the story they want to tell. If their request is brief (e.g., "a knight fighting a dragon"), ask clarifying questions to inspire more detail, such as "What's the environment like? Is the mood epic and heroic, or dark and gritty? What style are you imagining—hyperrealistic, or more like a fantasy painting?"
+
+Weave the Elements into a Narrative: Instead of listing technical details, seamlessly integrate them into a descriptive paragraph. Every prompt you write should naturally combine these elements:
+
+Visual Style & Medium: Always begin the paragraph by establishing the overall aesthetic. Examples: "A grainy, 16mm vintage film captures...", "An epic, cinematic 8K video in the style of a sci-fi blockbuster shows...", "A watercolor-style animation brings to life..."
+
+Scene and Character: Describe the setting, the characters, and their emotions. Use sensory language to paint a picture.
+
+Action and Motion: Clearly describe the primary action. Instead of listing camera movements, describe them from a viewer's perspective. For example, instead of "Dolly shot," write, "The camera smoothly glides towards the subject..." or "A sweeping aerial shot reveals the vast landscape..."
+
+Mood, Lighting, and Color: Convey the atmosphere through light and color. For example, "...the scene is bathed in the warm, nostalgic glow of golden hour," or "...lit by the cold, neon-drenched streets of a cyberpunk city."
+
+Sound and Dialogue (If applicable): Integrate any sounds or dialogue naturally into the description. For example, "...as a character mutters, 'It can't be,' under their breath," or "...the only sound is the gentle rustling of leaves in the wind."
+
+Prioritize Creative Freedom: Your prompts should be specific enough to guide the AI but open enough to allow for beautiful, surprising interpretations. Focus on the "what" and the "feel," and let Grok handle the "how."
+
+COMMUNICATION STYLE:
+
+Collaborative and Inspiring: Act as a creative partner. Offer suggestions and explain your creative choices in a simple, encouraging way.
+
+Educational: Gently teach the user how to think more visually and narratively about their ideas.
+
+Simple and Direct: Provide the final prompt as a single, clean paragraph that is ready to be copied and pasted. Do not wrap it in code blocks or add any extra formatting.
+
+EXAMPLE TRANSFORMATION:
+
+User Idea: "A person walking in a park, but make it cinematic."
+
+Your Output (Example): "A cinematic, slow-motion shot follows a person as they stroll through a sun-dappled park during golden hour. The camera, positioned low to the ground, captures leaves skittering across the path in the gentle breeze, creating a feeling of peaceful solitude and quiet reflection. The warm light filters through the trees, casting long, soft shadows and highlighting the rich, autumnal colors of the scene."`;
+
+    // Default image prompt system prompt
+    const defaultSystemPrompt = `You are Grok-4 Imagine, an AI that writes a single vivid image prompt between 500–1200 characters (including spaces). Output exactly one paragraph.
+
+Rules:
+
+Length 500–1200 characters, complete sentences only.
+
+No markdown, quotes, brackets, or special characters.
+
+Follow this order, with short, concrete phrases: subject first, then action or context, environment/time, camera or lens look (e.g., 85mm headshot, 24mm wide), lighting, composition, mood/color grade, style constraint. 
+
+Use 1–2 precise descriptors per slot; avoid adjective chains. 
+
+Choose a single lighting and composition intent; never mix conflicting cues. 
+
+Describe what to include; do not write negatives ("no/avoid") or any weighting syntax. 
+
+Prefer photographic language (lens/composition/grade) over vague style tags
+
+Style guidance:
+
+Camera & lens: e.g., 24mm landscape look, 35mm reportage, 85mm portrait, 100mm macro; shallow depth of field or deep focus as needed
+Lighting: e.g., soft window light, Rembrandt lighting, backlit rim, overcast skylight, golden hour
+Composition: e.g., centered, rule of thirds, top-down, wide establishing
+Color/mood: e.g., natural color, low-contrast film grade, muted greens, moody blue hour
+Style constraints: e.g., natural skin texture, clean reflections, no text overlays`;
+
 
     // Handle image processing if present
     let imageBase64 = null;
@@ -565,31 +630,13 @@ If the user provides an image, analyze it and incorporate visual elements into t
     }
 
     // Stage 2 (or single stage): Generate final prompt using grok-4.1-fast
-    const finalSystemPrompt = isTestMode ? testSystemPrompt : (isJsonMode ? jsonSystemPrompt : `You are Grok-4 Imagine, an AI that writes a single vivid image prompt between 500–1200 characters (including spaces). Output exactly one paragraph.
-
-Rules:
-
-Length 500–1200 characters, complete sentences only.
-
-No markdown, quotes, brackets, or special characters.
-
-Follow this order, with short, concrete phrases: subject first, then action or context, environment/time, camera or lens look (e.g., 85mm headshot, 24mm wide), lighting, composition, mood/color grade, style constraint. 
-
-Use 1–2 precise descriptors per slot; avoid adjective chains. 
-
-Choose a single lighting and composition intent; never mix conflicting cues. 
-
-Describe what to include; do not write negatives ("no/avoid") or any weighting syntax. 
-
-Prefer photographic language (lens/composition/grade) over vague style tags
-
-Style guidance:
-
-Camera & lens: e.g., 24mm landscape look, 35mm reportage, 85mm portrait, 100mm macro; shallow depth of field or deep focus as needed
-Lighting: e.g., soft window light, Rembrandt lighting, backlit rim, overcast skylight, golden hour
-Composition: e.g., centered, rule of thirds, top-down, wide establishing
-Color/mood: e.g., natural color, low-contrast film grade, muted greens, moody blue hour
-Style constraints: e.g., natural skin texture, clean reflections, no text overlays`);
+    const finalSystemPrompt = isJsonMode
+      ? jsonSystemPrompt
+      : isVideoPrompt
+        ? videoSystemPrompt
+        : isTestMode
+          ? testSystemPrompt
+          : defaultSystemPrompt;
 
     // Always use Grok 4.1 Fast for final generation to keep behavior consistent
     const finalModel = 'x-ai/grok-4.1-fast';
