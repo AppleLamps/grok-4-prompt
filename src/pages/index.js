@@ -176,6 +176,7 @@ export default function Home() {
   const [dictatingTarget, setDictatingTarget] = useState(null);
   const [isJsonMode, setIsJsonMode] = useState(false);
   const [isTestMode, setIsTestMode] = useState(false);
+  const [isVideoPrompt, setIsVideoPrompt] = useState(false);
   const [showStylePresets, setShowStylePresets] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const imageObjectUrlRef = useRef(null);
@@ -305,6 +306,7 @@ export default function Home() {
         formData.append('image', uploadedImage);
         formData.append('isJsonMode', String(isJsonMode));
         formData.append('isTestMode', String(isTestMode));
+        formData.append('isVideoPrompt', String(isVideoPrompt));
         response = await fetch('/api/generate', { method: 'POST', body: formData, signal: controller.signal });
       } else {
         // JSON path for text-only
@@ -312,7 +314,7 @@ export default function Home() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
-          body: JSON.stringify({ idea: idea.trim(), directions: directions.trim() || undefined, isJsonMode, isTestMode })
+          body: JSON.stringify({ idea: idea.trim(), directions: directions.trim() || undefined, isJsonMode, isTestMode, isVideoPrompt })
         });
       }
 
@@ -366,7 +368,7 @@ export default function Home() {
       setIsLoading(false);
       if (generateAbortRef.current === controller) generateAbortRef.current = null;
     }
-  }, [idea, directions, uploadedImage, isJsonMode, isTestMode]);
+  }, [idea, directions, uploadedImage, isJsonMode, isTestMode, isVideoPrompt]);
 
   const handleCopy = useCallback(async () => {
     if (!generatedPrompt || error) return;
@@ -747,7 +749,7 @@ export default function Home() {
                 <div className="section-divider"></div>
 
                 <div className="flex items-center justify-end -mt-2">
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-6 flex-wrap justify-end">
                     <div className="flex items-center gap-4">
                       <div className="flex flex-col text-right">
                         <span className="text-sm font-medium text-premium-200">Emily&apos;s JSON Mode</span>
@@ -778,6 +780,22 @@ export default function Home() {
                         aria-label="Toggle Test Mode"
                       >
                         <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isTestMode ? 'translate-x-7' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex flex-col text-right">
+                        <span className="text-sm font-medium text-premium-200">Video Prompt</span>
+                        <span className="text-xs text-premium-400 mt-1">Text-to-video scene</span>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isVideoPrompt}
+                        onClick={() => setIsVideoPrompt((v) => !v)}
+                        className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${isVideoPrompt ? 'bg-cyan-400/90' : 'bg-premium-800/60 border border-premium-700'}`}
+                        aria-label="Toggle Video Prompt Mode"
+                      >
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isVideoPrompt ? 'translate-x-7' : 'translate-x-1'}`} />
                       </button>
                     </div>
                   </div>
