@@ -330,6 +330,7 @@ export default function Home() {
     } finally {
       setIsSurpriseLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleClearAll = useCallback(() => {
@@ -653,7 +654,7 @@ export default function Home() {
                                 title="Copy full JSON"
                               >
                                 {copiedType === 'json' ? <CheckIcon /> : <CopyIcon />}
-                                <span className="hidden sm:inline">Copy JSON</span>
+                                <span className="whitespace-nowrap">Copy JSON</span>
                               </button>
                               <button
                                 onClick={handleCopyScene}
@@ -661,7 +662,7 @@ export default function Home() {
                                 title="Copy only the scene field"
                               >
                                 {copiedType === 'scene' ? <CheckIcon /> : <CopyIcon />}
-                                <span className="hidden sm:inline">Copy Scene</span>
+                                <span className="whitespace-nowrap">Copy Scene</span>
                               </button>
                             </>
                           ) : (

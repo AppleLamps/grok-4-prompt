@@ -169,7 +169,7 @@
     box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.05) inset;
   }
   .copy-button {
-    @apply flex items-center justify-center w-9 h-9 text-premium-300 rounded-lg border transition-all;
+    @apply flex items-center justify-center gap-2 px-3 py-2 text-premium-300 rounded-lg border transition-all whitespace-nowrap;
     background: linear-gradient(180deg, rgba(71,85,105,0.8), rgba(51,65,85,0.7));
     border-color: hsl(var(--elev-border));
   }
