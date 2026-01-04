@@ -34,34 +34,35 @@ const HelpModal = ({ isOpen, onClose }) => {
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold text-premium-100">How to Use</h3>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-premium-700 transition-colors" aria-label="Close modal">
+      <div className="modal-content font-mono">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6 pb-4 border-b border-[rgba(245,158,11,0.2)]">
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-[#F59E0B]">// SYSTEM_HELP</h3>
+          <button onClick={onClose} className="p-2 hover:text-[#F59E0B] transition-colors text-[#9CA3AF]" aria-label="Close modal">
             <CloseIcon />
           </button>
         </div>
-        <div className="space-y-4 text-premium-300 leading-relaxed">
-          <div>
-            <h4 className="font-semibold text-premium-100 mb-2">📝 Describe Your Idea</h4>
-            <p>Enter your creative concept or vision in the text area. You can also just upload an image without text!</p>
+        <div className="space-y-4 text-[#9CA3AF] text-sm leading-relaxed">
+          <div className="p-3 border border-[rgba(255,255,255,0.1)] bg-black/30">
+            <h4 className="font-semibold text-[#E5E7EB] mb-2 text-xs uppercase tracking-wider">01 // PRIMARY_INPUT</h4>
+            <p>Enter your creative concept in the text area. You can also upload an image without text.</p>
           </div>
-          <div>
-            <h4 className="font-semibold text-premium-100 mb-2">🎯 Add Directions (Optional)</h4>
-            <p>Provide specific requirements, style preferences, or any other context to refine the prompt.</p>
+          <div className="p-3 border border-[rgba(255,255,255,0.1)] bg-black/30">
+            <h4 className="font-semibold text-[#E5E7EB] mb-2 text-xs uppercase tracking-wider">02 // MODIFIERS</h4>
+            <p>Provide style preferences, requirements, or context to refine the output.</p>
           </div>
-          <div>
-            <h4 className="font-semibold text-premium-100 mb-2">🖼️ Upload Image (Optional)</h4>
-            <p><strong>Image Only:</strong> Upload an image to recreate it as closely as possible.</p>
-            <p><strong>Image + Text:</strong> Upload an image with your idea/directions to modify or enhance it.</p>
+          <div className="p-3 border border-[rgba(255,255,255,0.1)] bg-black/30">
+            <h4 className="font-semibold text-[#E5E7EB] mb-2 text-xs uppercase tracking-wider">03 // IMG_REFERENCE</h4>
+            <p><span className="text-[#F59E0B]">IMAGE_ONLY:</span> Upload to recreate closely.</p>
+            <p><span className="text-[#F59E0B]">IMAGE+TEXT:</span> Upload with idea to modify/enhance.</p>
           </div>
-          <div>
-            <h4 className="font-semibold text-premium-100 mb-2">✨ Generate &amp; Copy</h4>
-            <p>Click &quot;Generate Prompt&quot; to create your optimized prompt, then use the copy button to grab it.</p>
+          <div className="p-3 border border-[rgba(255,255,255,0.1)] bg-black/30">
+            <h4 className="font-semibold text-[#E5E7EB] mb-2 text-xs uppercase tracking-wider">04 // EXECUTE</h4>
+            <p>Click EXECUTE to generate your optimized prompt, then COPY to clipboard.</p>
           </div>
-          <div className="bg-premium-800/50 rounded-lg p-4 border border-premium-700">
-            <h4 className="font-semibold text-premium-100 mb-2">⌨️ Keyboard Shortcut</h4>
-            <p>Press <kbd>Ctrl + Enter</kbd> (or <kbd>Cmd + Enter</kbd> on Mac) to generate your prompt quickly!</p>
+          <div className="p-4 border border-[#F59E0B]/30 bg-[#F59E0B]/5">
+            <h4 className="font-semibold text-[#F59E0B] mb-2 text-xs uppercase tracking-wider">HOTKEY_BINDING</h4>
+            <p>Press <kbd className="px-2 py-1 bg-black/50 border border-[rgba(255,255,255,0.2)] text-[#E5E7EB]">Ctrl + Enter</kbd> or <kbd className="px-2 py-1 bg-black/50 border border-[rgba(255,255,255,0.2)] text-[#E5E7EB]">Cmd + Enter</kbd> to execute.</p>
           </div>
         </div>
       </div>

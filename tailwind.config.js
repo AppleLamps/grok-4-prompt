@@ -9,9 +9,26 @@ module.exports = {
     extend: {
       fontFamily: {
         'inter': ['Inter', 'system-ui', 'sans-serif'],
+        'mono': ['JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', 'monospace'],
       },
       colors: {
-        // Enhanced premium palette for better brightness and contrast
+        // Neural Forge dark terminal palette
+        neural: {
+          bg: '#0a0a0a',
+          panel: '#0d0d0d',
+          surface: '#111111',
+          border: '#1a1a1a',
+          'border-accent': 'rgba(245, 158, 11, 0.3)',
+          accent: '#F59E0B',
+          'accent-hover': '#FBBF24',
+          'accent-dim': 'rgba(245, 158, 11, 0.6)',
+          success: '#22C55E',
+          text: '#9CA3AF',
+          muted: '#6B7280',
+          dim: '#4B5563',
+          white: '#E5E7EB',
+        },
+        // Keep premium palette for backwards compatibility during transition
         premium: {
           50: '#ffffff',
           100: '#f8fafc',
@@ -25,7 +42,6 @@ module.exports = {
           900: '#1e293b',
           950: '#0f172a',
         },
-        // Enhanced accent colors for better visibility
         accent: {
           DEFAULT: '#6366f1',
           hover: '#4f46e5',
@@ -33,7 +49,6 @@ module.exports = {
           purple: '#a855f7',
           cyan: '#06b6d4',
         },
-        // Glass effect colors
         glass: {
           light: 'rgba(255, 255, 255, 0.1)',
           medium: 'rgba(255, 255, 255, 0.05)',
@@ -50,6 +65,8 @@ module.exports = {
         'premium-hover': '0 48px 96px -12px rgba(0, 0, 0, 0.2)',
         'button': '0 4px 14px 0 rgba(0, 0, 0, 0.1)',
         'floating': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        'neural-glow': '0 0 20px rgba(245, 158, 11, 0.15)',
+        'neural-glow-strong': '0 0 30px rgba(245, 158, 11, 0.25)',
       },
       animation: {
         'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
@@ -58,6 +75,8 @@ module.exports = {
         'aurora': 'aurora 60s infinite',
         'stars': 'stars 120s linear infinite',
         'glow-line': 'glow-line 2s linear infinite',
+        'pulse-slow': 'pulse 3s ease-in-out infinite',
+        'blink': 'blink 1s step-end infinite',
       },
       keyframes: {
         fadeInUp: {
@@ -94,6 +113,10 @@ module.exports = {
           '40%': { opacity: '1' },
           '60%': { opacity: '0' },
           '100%': { opacity: '0', transform: 'translateX(calc(100vw + 100px)) rotateZ(45deg)' },
+        },
+        blink: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0' },
         },
       },
     },
