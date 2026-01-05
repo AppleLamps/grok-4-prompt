@@ -409,7 +409,7 @@ export default function Home() {
             {/* Neural Header */}
             <header className="neural-header">
               <div className="neural-brand font-mono">
-                <span className="text-neural-muted">//</span> GROKIFY_PROMPT <span className="text-neural-accent">v2.0</span>
+                <span className="text-neural-muted">{'// '}</span>GROKIFY_PROMPT <span className="text-neural-accent">v2.0</span>
               </div>
               <div className="neural-status">
                 <span className="neural-status-dot" />

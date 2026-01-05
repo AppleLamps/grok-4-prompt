@@ -37,7 +37,7 @@ const HelpModal = ({ isOpen, onClose }) => {
       <div className="modal-content font-mono">
         {/* Header */}
         <div className="flex justify-between items-center mb-6 pb-4 border-b border-[rgba(245,158,11,0.2)]">
-          <h3 className="text-sm font-semibold uppercase tracking-widest text-[#F59E0B]">// SYSTEM_HELP</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-[#F59E0B]">{'// '}SYSTEM_HELP</h3>
           <button onClick={onClose} className="p-2 hover:text-[#F59E0B] transition-colors text-[#9CA3AF]" aria-label="Close modal">
             <CloseIcon />
           </button>

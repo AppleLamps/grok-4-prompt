@@ -18,7 +18,7 @@ const HistoryModal = ({ isOpen, onClose, entries, onToggleFav, onLoad, onCopy, o
       <div className="modal-content max-w-3xl w-full font-mono">
         {/* Header */}
         <div className="flex items-center justify-between mb-4 pb-4 border-b border-[rgba(245,158,11,0.2)]">
-          <h3 className="text-sm font-semibold uppercase tracking-widest text-[#F59E0B]">// HISTORY_LOG</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-[#F59E0B]">{'// '}HISTORY_LOG</h3>
           <div className="flex gap-2">
             {!!entries.length && (
               <button onClick={onClear} className="px-3 py-2 text-xs uppercase tracking-wider border border-[rgba(255,255,255,0.1)] hover:border-red-500/50 text-[#9CA3AF] hover:text-red-400 transition-colors">PURGE_ALL</button>
