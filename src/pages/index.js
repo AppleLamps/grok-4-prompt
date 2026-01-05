@@ -467,7 +467,7 @@ export default function Home() {
                   <span className="text-neural-accent">v2.0</span>
                 </h1>
                 <p className="text-xs text-neural-dim font-mono uppercase tracking-wider">
-                  AI PROMPT GENERATOR • IMAGE PROMPT MAKER • GROK-4 PROMPTS • PROMPT ENGINEERING TOOL
+                  AI PROMPT GENERATOR • IMAGE PROMPT MAKER • GROK IMAGINE PROMPTS • PROMPT ENGINEERING TOOL
                 </p>
               </div>
               <div className="neural-status">
@@ -713,30 +713,32 @@ export default function Home() {
                   onCopyScene={handleCopyScene}
                 />
 
-                {/* SEO-friendly content sections */}
+                {/* SEO-friendly content sections - collapsed by default */}
                 <section className="mt-10 space-y-4" aria-label="About and frequently asked questions">
-                  <div className="neural-section">
-                    <h2 id="about" className="neural-section-header">
-                      06 // ABOUT_THIS_TOOL
-                    </h2>
-                    <div className="space-y-3 text-sm leading-relaxed text-neural-muted">
+                  <details className="neural-section group">
+                    <summary className="neural-section-header cursor-pointer list-none flex items-center justify-between">
+                      <span id="about">06 // ABOUT_THIS_TOOL</span>
+                      <span className="text-neural-accent text-xs ml-2 group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="space-y-3 text-sm leading-relaxed text-neural-muted mt-4">
                       <p>
                         GROKIFY_PROMPT is an <strong>AI prompt generator</strong> and <strong>image prompt maker</strong>{' '}
                         designed for fast, repeatable <strong>prompt engineering</strong>. It helps you turn an idea (and
                         optional reference image) into detailed, high-quality prompts.
                       </p>
                       <p>
-                        Use it to create <strong>Grok-4 prompts</strong> for text-to-image workflows, or switch modes to
+                        Use it to create <strong>GROK IMAGINE PROMPTS</strong> for text-to-image workflows, or switch modes to
                         generate structured JSON and text-to-video scene prompts.
                       </p>
                     </div>
-                  </div>
+                  </details>
 
-                  <div className="neural-section">
-                    <h2 id="faq" className="neural-section-header">
-                      07 // FAQ
-                    </h2>
-                    <div className="space-y-2">
+                  <details className="neural-section group">
+                    <summary className="neural-section-header cursor-pointer list-none flex items-center justify-between">
+                      <span id="faq">07 // FAQ</span>
+                      <span className="text-neural-accent text-xs ml-2 group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="space-y-2 mt-4">
                       {SEO_FAQ.map((item) => (
                         <details key={item.question} className="border border-white/10 bg-black/20 p-3">
                           <summary className="cursor-pointer text-sm text-neural-white">
@@ -746,7 +748,7 @@ export default function Home() {
                         </details>
                       ))}
                     </div>
-                  </div>
+                  </details>
                 </section>
               </main>
             </ErrorBoundary>

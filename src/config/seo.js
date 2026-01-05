@@ -12,12 +12,12 @@ export const SEO_DEFAULT_TITLE = `${SEO_APP_NAME} — AI Prompt Generator & Imag
 export const SEO_TITLE_TEMPLATE = `%s | ${SEO_SITE_NAME}`;
 
 export const SEO_DEFAULT_DESCRIPTION =
-  'Create production-grade Grok-4 prompts in seconds. GROKIFY_PROMPT is an AI prompt generator and image prompt maker for prompt engineering, text-to-image, and text-to-video workflows.';
+  'Create production-grade GROK IMAGINE PROMPTS in seconds. GROKIFY_PROMPT is an AI prompt generator and image prompt maker for prompt engineering, text-to-image, and text-to-video workflows.';
 
 export const SEO_KEYWORDS = [
   'AI prompt generator',
   'image prompt maker',
-  'Grok-4 prompts',
+  'GROK IMAGINE PROMPTS',
   'prompt engineering tool',
   'text to image prompt',
   'text to video prompt',
@@ -58,7 +58,7 @@ export const SEO_FAQ = [
   {
     question: 'What is GROKIFY_PROMPT v2.0?',
     answer:
-      'GROKIFY_PROMPT is an AI prompt generator and image prompt maker that turns ideas (and optional reference images) into detailed Grok-4 prompts for AI generation workflows.',
+      'GROKIFY_PROMPT is an AI prompt generator and image prompt maker that turns ideas (and optional reference images) into detailed GROK IMAGINE PROMPTS for AI generation workflows.',
   },
   {
     question: 'Can it generate prompts for AI image generation?',

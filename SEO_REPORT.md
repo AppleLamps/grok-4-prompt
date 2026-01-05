@@ -54,7 +54,7 @@ npm run build
 |---|---|
 | AI prompt generator | Default `<title>` + meta description (`src/config/seo.js`), on-page header + About section (`src/pages/index.js`) |
 | image prompt maker | Default `<title>` + meta description (`src/config/seo.js`), on-page header + About section (`src/pages/index.js`) |
-| Grok-4 prompts | Default meta description + on-page header + About section (`src/pages/index.js`) |
+| GROK IMAGINE PROMPTS | Default meta description + on-page header + About section (`src/pages/index.js`) |
 | prompt engineering tool | `SEO_KEYWORDS` + on-page header + About section (`src/pages/index.js`) |
 
 ## Structured data

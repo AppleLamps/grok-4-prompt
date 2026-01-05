@@ -104,6 +104,21 @@
     color: #F59E0B;
   }
 
+  /* Collapsible section summary - hide default marker */
+  details.neural-section > summary {
+    @apply mb-0;
+  }
+
+  details.neural-section > summary::-webkit-details-marker,
+  details.neural-section > summary::marker {
+    display: none;
+    content: '';
+  }
+
+  details.neural-section[open] > summary {
+    @apply mb-0;
+  }
+
   /* --- Neural Input --- */
   .neural-input {
     @apply w-full px-4 py-3 text-sm transition-all duration-200 resize-none;

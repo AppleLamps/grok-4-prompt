@@ -34,7 +34,7 @@ You are an expert SEO engineer and Next.js developer. Review the entire GROKIFY_
    - Implement proper error handling pages (404, 500)
 
 5. **Content SEO**
-   - Target keywords: "AI prompt generator", "image prompt maker", "Grok-4 prompts", "prompt engineering tool"
+   - Target keywords: "AI prompt generator", "image prompt maker", "GROK IMAGINE PROMPTS", "prompt engineering tool"
    - Create FAQ schema for common questions
    - Add breadcrumb schema
    - Optimize README.md for SEO

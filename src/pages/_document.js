@@ -6,12 +6,7 @@ export default function Document() {
     <Html lang={SEO_LANG}>
       <Head>
         <meta name="theme-color" content={SEO_THEME_COLOR} />
-        {process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && (
-          <meta
-            name="google-site-verification"
-            content={process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}
-          />
-        )}
+        <meta name="google-site-verification" content="6kiXAxVTCoZs1RvIo5ESuVqmfz3jG1qPnTdLmdFuSSU" />
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
