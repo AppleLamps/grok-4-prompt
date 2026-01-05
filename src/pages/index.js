@@ -467,7 +467,7 @@ export default function Home() {
                   <span className="text-neural-accent">v2.0</span>
                 </h1>
                 <p className="text-xs text-neural-dim font-mono uppercase tracking-wider">
-                  AI PROMPT GENERATOR • IMAGE PROMPT MAKER • GROK IMAGINE PROMPTS • PROMPT ENGINEERING TOOL
+                  GROK IMAGINE PROMPTS
                 </p>
               </div>
               <div className="neural-status">
