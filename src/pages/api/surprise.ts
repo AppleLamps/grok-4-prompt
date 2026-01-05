@@ -1,6 +1,7 @@
 import type { NextApiHandler } from 'next';
 import logger from '../../utils/logger';
 import { SURPRISE_SYSTEM_PROMPT } from '../../config/prompts';
+import { OPENROUTER_MODELS } from '../../config/constants';
 import { makeRateKey, rateLimiter } from '../../utils/api-helpers';
 import {
   makeOpenRouterCall,
@@ -10,21 +11,13 @@ import {
   type JsonSchemaResponseFormat,
   type OpenRouterRequestBody,
 } from '../../services/openRouterService';
-
-interface PromptTextPayload {
-  prompt: string;
-}
-
-type StructuredPayload = PromptTextPayload;
-
-interface ChatCompletionChoice {
-  message?: { content?: unknown };
-}
-
-interface ChatCompletionResponse {
-  choices?: ChatCompletionChoice[];
-  usage?: unknown;
-}
+import {
+  parseStructuredContent,
+  ensureTextPrompt,
+  type PromptTextPayload,
+  type StructuredPayload,
+  type ChatCompletionResponse,
+} from '../../utils/openRouterParsers';
 
 type SurpriseResponse =
   | { prompt: string; usage: unknown }
@@ -45,35 +38,6 @@ const PROMPT_ONLY_SCHEMA = {
   },
   strict: true,
 } satisfies JsonSchemaWrapper;
-
-const extractMessageText = (content: unknown): string => {
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => (typeof (part as { text?: unknown })?.text === 'string' ? (part as { text?: string }).text : ''))
-      .join('')
-      .trim();
-  }
-  if (content && typeof content === 'object') {
-    const candidate = (content as { text?: unknown }).text;
-    if (typeof candidate === 'string') return candidate;
-    return JSON.stringify(content);
-  }
-  return '';
-};
-
-const parseStructuredContent = (content: unknown): StructuredPayload => {
-  const raw = extractMessageText(content);
-  if (!raw) throw new Error('Empty AI response');
-  return JSON.parse(raw) as StructuredPayload;
-};
-
-const ensureTextPrompt = (payload: StructuredPayload): string => {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload) || typeof (payload as PromptTextPayload).prompt !== 'string') {
-    throw new Error('Invalid structured prompt payload');
-  }
-  return (payload as PromptTextPayload).prompt.trim();
-};
 
 const handler: NextApiHandler<SurpriseResponse> = async (req, res) => {
   if (req.method !== 'POST') {
@@ -103,7 +67,7 @@ const handler: NextApiHandler<SurpriseResponse> = async (req, res) => {
     };
 
     const requestBody: OpenRouterRequestBody = {
-      model: 'x-ai/grok-4.1-fast',
+      model: OPENROUTER_MODELS.PRIMARY,
       messages: [
         {
           role: 'system',

@@ -1,0 +1,33 @@
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "@id": "{{SITE_URL}}/#howto",
+  "name": "How to Generate AI Prompts with GROKIFY_PROMPT",
+  "description": "Create production-grade AI prompts for text-to-image and text-to-video workflows.",
+  "step": [
+    {
+      "@type": "HowToStep",
+      "position": 1,
+      "name": "Enter your concept",
+      "text": "Type your idea or concept description in the primary input field."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 2,
+      "name": "Add modifiers",
+      "text": "Optionally add style parameters, upload a reference image, or select style presets."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 3,
+      "name": "Execute",
+      "text": "Click Execute to generate your optimized AI prompt."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 4,
+      "name": "Copy and use",
+      "text": "Copy the generated prompt to use in your AI image or video generation tool."
+    }
+  ]
+}

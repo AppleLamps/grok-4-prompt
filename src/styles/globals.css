@@ -3,16 +3,15 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-/* Import JetBrains Mono for terminal aesthetic */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-
 /*************************
  Base layer
 *************************/
 @layer base {
   html {
     @apply bg-neural-bg;
-    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    /* `--font-jetbrains-mono` is provided by `next/font` via `_app.js` */
+    font-family: var(--font-jetbrains-mono, ui-monospace), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -71,18 +70,20 @@
 
   .neural-brand {
     @apply text-lg font-semibold tracking-wider;
-    color: #E5E7EB;
+    color: #F59E0B;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.7), 0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(245, 158, 11, 0.3);
   }
 
   .neural-status {
     @apply flex items-center gap-2 text-xs font-medium uppercase tracking-widest;
-    color: #22C55E;
+    color: #FBBF24;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.8), 0 0 20px rgba(251, 191, 36, 0.5), 0 0 30px rgba(251, 191, 36, 0.3);
   }
 
   .neural-status-dot {
-    @apply w-2 h-2 rounded-full;
-    background: #22C55E;
-    box-shadow: 0 0 8px #22C55E;
+    @apply w-2.5 h-2.5 rounded-full;
+    background: #00FF00;
+    box-shadow: 0 0 6px #00FF00, 0 0 12px #00FF00, 0 0 20px rgba(0, 255, 0, 0.6);
     animation: pulse-glow 2s ease-in-out infinite;
   }
 
@@ -109,7 +110,8 @@
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #E5E7EB;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-jetbrains-mono, ui-monospace), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
   }
 
   .neural-input::placeholder {
@@ -132,7 +134,8 @@
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #9CA3AF;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-jetbrains-mono, ui-monospace), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
@@ -316,7 +319,8 @@
   .neural-output pre {
     @apply text-sm leading-relaxed whitespace-pre-wrap;
     color: #E5E7EB;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-jetbrains-mono, ui-monospace), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
   }
 
   /* ========================================
@@ -373,7 +377,8 @@
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #E5E7EB;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-jetbrains-mono, ui-monospace), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
   }
 
   .input-field::placeholder {
@@ -487,7 +492,7 @@
   /* Enhanced Labels & misc (updated for neural theme) */
   .label-text { @apply block text-xs font-semibold uppercase tracking-widest mb-3; color: #F59E0B; }
   .optional-text { @apply text-neural-muted font-normal normal-case tracking-normal; }
-  .error-content { @apply text-red-400 bg-red-900/30 border-l-2 border-red-500 p-4; font-family: 'JetBrains Mono', monospace; }
+  .error-content { @apply text-red-400 bg-red-900/30 border-l-2 border-red-500 p-4; font-family: var(--font-jetbrains-mono, ui-monospace), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
   .loading-spinner { @apply w-5 h-5 border-2 border-neural-dim border-t-neural-accent rounded-full animate-spin; }
 
   /* Enhanced Floating buttons (updated for neural theme) */

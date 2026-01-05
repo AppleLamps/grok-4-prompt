@@ -9,7 +9,18 @@ module.exports = {
     extend: {
       fontFamily: {
         'inter': ['Inter', 'system-ui', 'sans-serif'],
-        'mono': ['JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', 'monospace'],
+        // Provided by `next/font` via `_document.js` (self-hosted, CSP-friendly).
+        'mono': [
+          'var(--font-jetbrains-mono, ui-monospace)',
+          'ui-monospace',
+          'SFMono-Regular',
+          'Menlo',
+          'Monaco',
+          'Consolas',
+          '"Liberation Mono"',
+          '"Courier New"',
+          'monospace',
+        ],
       },
       colors: {
         // Neural Forge dark terminal palette

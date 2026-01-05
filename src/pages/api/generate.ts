@@ -6,6 +6,7 @@ import he from 'he';
 import type { NextApiHandler, NextApiRequest } from 'next';
 import logger from '../../utils/logger';
 import { makeRateKey, rateLimiter } from '../../utils/api-helpers';
+import { INPUT_LIMITS, OPENROUTER_MODELS, PROMPT_MODES, type PromptMode } from '../../config/constants';
 import {
   DEFAULT_SYSTEM_PROMPT,
   JSON_SYSTEM_PROMPT,
@@ -22,6 +23,15 @@ import {
   type OpenRouterContent,
   type OpenRouterRequestBody,
 } from '../../services/openRouterService';
+import {
+  extractMessageText,
+  parseStructuredContent,
+  ensureTextPrompt,
+  ensureJsonPrompt,
+  type JsonPromptPayload,
+  type StructuredPayload,
+  type ChatCompletionResponse,
+} from '../../utils/openRouterParsers';
 
 type GenerateRequestBody = {
   idea?: string;
@@ -32,51 +42,39 @@ type GenerateRequestBody = {
   isMultiPrompt?: boolean;
 };
 
-interface PromptTextPayload {
-  prompt: string;
-}
-
-interface JsonPromptSubject {
-  description: string;
-  position: string;
-  action: string;
-  color_palette: string[];
-}
-
-interface JsonPromptCamera {
-  angle: string;
-  lens: string;
-  'f-number': string;
-  ISO: number;
-  depth_of_field: string;
-}
-
-interface JsonPromptPayload {
-  scene: string;
-  subjects: JsonPromptSubject[];
-  style: string;
-  color_palette: string[];
-  lighting: string;
-  mood: string;
-  background: string;
-  composition: string;
-  camera: JsonPromptCamera;
-}
-
-type StructuredPayload = PromptTextPayload | JsonPromptPayload;
-
-interface ChatCompletionChoice {
-  message?: { content?: unknown };
-}
-
-interface ChatCompletionResponse {
-  choices?: ChatCompletionChoice[];
-  usage?: unknown;
-}
-
 type GenerateResponse =
   | { success: true; prompt: string | JsonPromptPayload; usage: unknown }
   | { error: string; message: string };
+
+// ============================================================================
+// System Prompt Lookup (replaces nested ternary)
+// ============================================================================
+
+const SYSTEM_PROMPTS: Record<PromptMode, string> = {
+  [PROMPT_MODES.JSON]: JSON_SYSTEM_PROMPT,
+  [PROMPT_MODES.VIDEO]: VIDEO_SYSTEM_PROMPT,
+  [PROMPT_MODES.TEST]: TEST_SYSTEM_PROMPT,
+  [PROMPT_MODES.DEFAULT]: DEFAULT_SYSTEM_PROMPT,
+};
+
+/**
+ * Determines which prompt mode to use based on the request flags.
+ * Priority order: JSON > Video > Test > Default
+ */
+const getPromptMode = (flags: {
+  isJsonMode: boolean;
+  isVideoPrompt: boolean;
+  isTestMode: boolean;
+}): PromptMode => {
+  if (flags.isJsonMode) return PROMPT_MODES.JSON;
+  if (flags.isVideoPrompt) return PROMPT_MODES.VIDEO;
+  if (flags.isTestMode) return PROMPT_MODES.TEST;
+  return PROMPT_MODES.DEFAULT;
+};
+
+// ============================================================================
+// JSON Schema Definitions
+// ============================================================================
 
 const DEFAULT_PROMPT_SCHEMA = {
   name: 'prompt_response',
@@ -179,55 +177,9 @@ const readJsonBody = async (req: NextApiRequest, maxBytes = 1_000_000): Promise<
   }
 };
 
-const extractMessageText = (content: unknown): string => {
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => (typeof (part as { text?: unknown })?.text === 'string' ? (part as { text?: string }).text : ''))
-      .join('')
-      .trim();
-  }
-  if (content && typeof content === 'object') {
-    const candidate = (content as { text?: unknown }).text;
-    if (typeof candidate === 'string') return candidate;
-    return JSON.stringify(content);
-  }
-  return '';
-};
-
-const parseStructuredContent = (content: unknown): StructuredPayload => {
-  const raw = extractMessageText(content);
-  if (!raw) throw new Error('Empty AI response');
-  return JSON.parse(raw) as StructuredPayload;
-};
-
-const ensureTextPrompt = (payload: StructuredPayload): string => {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload) || typeof (payload as PromptTextPayload).prompt !== 'string') {
-    throw new Error('Invalid structured prompt payload');
-  }
-  return (payload as PromptTextPayload).prompt.trim();
-};
-
-const ensureJsonPrompt = (payload: StructuredPayload): JsonPromptPayload => {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    throw new Error('Invalid structured JSON payload');
-  }
-  const jsonPayload = payload as Partial<JsonPromptPayload>;
-  if (
-    typeof jsonPayload.scene !== 'string' ||
-    !Array.isArray(jsonPayload.subjects) ||
-    typeof jsonPayload.style !== 'string' ||
-    !Array.isArray(jsonPayload.color_palette) ||
-    typeof jsonPayload.lighting !== 'string' ||
-    typeof jsonPayload.mood !== 'string' ||
-    typeof jsonPayload.background !== 'string' ||
-    typeof jsonPayload.composition !== 'string' ||
-    !jsonPayload.camera
-  ) {
-    throw new Error('Invalid structured JSON payload');
-  }
-  return jsonPayload as JsonPromptPayload;
-};
+// ============================================================================
+// Form Field Helpers
+// ============================================================================
 
 const getFieldValue = (value: Fields[string]): string => {
   if (!value) return '';
@@ -254,7 +206,12 @@ const buildUserContent = (text: string, imageBase64?: string | null, mimeType?: 
   return text;
 };
 
+// ============================================================================
+// Main Request Handler
+// ============================================================================
+
 const handler: NextApiHandler<GenerateResponse> = async (req, res) => {
+  // === 1. Request Method Validation ===
   if (req.method !== 'POST') {
     return res.status(405).json({
       error: 'Method not allowed',
@@ -262,6 +219,7 @@ const handler: NextApiHandler<GenerateResponse> = async (req, res) => {
     });
   }
 
+  // === 2. Rate Limiting ===
   try {
     const key = makeRateKey(req);
     await rateLimiter.consume(key, 1);
@@ -275,19 +233,20 @@ const handler: NextApiHandler<GenerateResponse> = async (req, res) => {
   const isMultipart = (req.headers['content-type'] || '').includes('multipart/form-data');
 
   try {
+    // === 3. Parse Request Body ===
     let fields: Fields = {};
     let files: Files = {};
 
     if (isMultipart) {
       const form = new IncomingForm({
-        maxFileSize: 10 * 1024 * 1024, // 10MB limit
+        maxFileSize: INPUT_LIMITS.IMAGE_MAX_SIZE,
         keepExtensions: true,
       });
       const [parsedFields, parsedFiles] = await form.parse(req);
       fields = parsedFields;
       files = parsedFiles;
     } else {
-      const body = await readJsonBody(req, 1_000_000);
+      const body = await readJsonBody(req, INPUT_LIMITS.IMAGE_MAX_SIZE);
       fields = {
         idea: body.idea ? [body.idea] : [''],
         directions: body.directions ? [body.directions] : [''],
@@ -299,8 +258,27 @@ const handler: NextApiHandler<GenerateResponse> = async (req, res) => {
       files = {};
     }
 
-    const idea = he.encode(getFieldValue(fields.idea)?.trim() || '');
-    const directions = he.encode(getFieldValue(fields.directions)?.trim() || '');
+    // Extract and sanitize input fields
+    const ideaRaw = getFieldValue(fields.idea)?.trim() || '';
+    const directionsRaw = getFieldValue(fields.directions)?.trim() || '';
+
+    // === Input Length Validation (Security) ===
+    if (ideaRaw.length > INPUT_LIMITS.IDEA_MAX_LENGTH) {
+      return res.status(400).json({
+        error: 'Input too long',
+        message: `Idea must be under ${INPUT_LIMITS.IDEA_MAX_LENGTH} characters.`,
+      });
+    }
+    if (directionsRaw.length > INPUT_LIMITS.DIRECTIONS_MAX_LENGTH) {
+      return res.status(400).json({
+        error: 'Input too long',
+        message: `Directions must be under ${INPUT_LIMITS.DIRECTIONS_MAX_LENGTH} characters.`,
+      });
+    }
+
+    // HTML encode to prevent XSS
+    const idea = he.encode(ideaRaw);
+    const directions = he.encode(directionsRaw);
     const imageFile = getFileValue(files.image);
     const isJsonMode = getFieldValue(fields.isJsonMode) === 'true';
     const isTestMode = getFieldValue(fields.isTestMode) === 'true';
@@ -361,12 +339,13 @@ const handler: NextApiHandler<GenerateResponse> = async (req, res) => {
       userPrompt += '\n\nReturn only raw JSON. No markdown fences, no explanations, no extra text.';
     }
 
+    // === 4. Optional Refinement Stage ===
     let refinedPrompt = userPrompt;
 
     if (isMultiPrompt) {
       try {
         const refinementBody: OpenRouterRequestBody = {
-          model: 'google/gemini-2.5-flash-lite',
+          model: OPENROUTER_MODELS.REFINEMENT,
           messages: [
             { role: 'system', content: REFINEMENT_SYSTEM_PROMPT },
             {
@@ -414,20 +393,16 @@ const handler: NextApiHandler<GenerateResponse> = async (req, res) => {
       }
     }
 
-    const finalSystemPrompt = isJsonMode
-      ? JSON_SYSTEM_PROMPT
-      : isVideoPrompt
-        ? VIDEO_SYSTEM_PROMPT
-        : isTestMode
-          ? TEST_SYSTEM_PROMPT
-          : DEFAULT_SYSTEM_PROMPT;
+    // === 5. Select System Prompt and Response Format ===
+    const promptMode = getPromptMode({ isJsonMode, isVideoPrompt, isTestMode });
+    const finalSystemPrompt = SYSTEM_PROMPTS[promptMode];
 
     const responseFormat: JsonSchemaResponseFormat = {
       type: 'json_schema',
       json_schema: isJsonMode ? JSON_MODE_SCHEMA : DEFAULT_PROMPT_SCHEMA,
     };
 
-    const finalModel = 'x-ai/grok-4.1-fast';
+    const finalModel = OPENROUTER_MODELS.PRIMARY;
     const includeImage = Boolean(imageBase64 && !isMultiPrompt);
 
     const finalBody: OpenRouterRequestBody = {

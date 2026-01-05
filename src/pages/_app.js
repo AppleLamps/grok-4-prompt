@@ -1,6 +1,14 @@
 import '@/styles/globals.css'
 import { useEffect } from 'react'
+import { JetBrains_Mono } from 'next/font/google'
 import { cacheManager } from '@/utils/performance'
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jetbrains-mono',
+  weight: ['400', '500', '600', '700'],
+})
 
 export default function App({ Component, pageProps }) {
   useEffect(() => {
@@ -34,5 +42,9 @@ export default function App({ Component, pageProps }) {
     }
   }, [])
 
-  return <Component {...pageProps} />
+  return (
+    <div className={`${jetbrainsMono.variable} font-mono`}>
+      <Component {...pageProps} />
+    </div>
+  )
 }

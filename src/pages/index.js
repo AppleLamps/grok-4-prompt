@@ -1,14 +1,20 @@
 import { useState, useCallback, useEffect, memo, useRef, useMemo } from 'react';
-import Head from 'next/head';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { compressImage } from '../utils/imageCompression';
 import logger from '../utils/logger';
+import { copyToClipboard } from '../utils/clipboard';
+import { INPUT_LIMITS, COPY_TARGETS } from '../config/constants';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { CopyIcon, CheckIcon, HelpIcon, HistoryIcon, MicIcon, StopIcon, TrashIcon, LightningIcon, ShuffleIcon, UploadBracketIcon } from '../components/IconComponents';
+import OutputDisplay from '../components/OutputDisplay';
+import SeoHead from '../components/SeoHead';
+import { HelpIcon, HistoryIcon, MicIcon, StopIcon, TrashIcon, LightningIcon, ShuffleIcon, UploadBracketIcon } from '../components/IconComponents';
 import usePromptGenerator from '../hooks/usePromptGenerator';
 import useSpeechRecognition from '../hooks/useSpeechRecognition';
 import useHistory from '../hooks/useHistory';
 import { STYLE_PRESETS } from '../config/styles';
+import { SEO_FAQ, SEO_PAGES } from '../config/seo';
+import { buildBreadcrumbSchema, buildFaqSchema, buildWebPageSchema, getBaseSchemas, getSchemaSiteUrl } from '../utils/schema';
 
 // Lazy load modals for better performance
 const HelpModal = dynamic(() => import('../components/HelpModal'), {
@@ -46,11 +52,29 @@ const ImageUpload = memo(({ onImageUpload, imagePreview, onImageRemove, isCompre
     }
   }, [onImageUpload]);
 
+  // Show compression loading state when processing without preview
+  if (isCompressing && !imagePreview) {
+    return (
+      <div className="image-upload-area relative flex flex-col items-center justify-center">
+        <div className="neural-upload-corners absolute inset-0 pointer-events-none" />
+        <div className="loading-spinner mb-3" />
+        <p className="text-xs font-semibold uppercase tracking-widest text-neural-accent">
+          COMPRESSING... {compressionProgress}%
+        </p>
+        <p className="text-xs text-neural-dim mt-1">
+          {(originalSize / 1024 / 1024).toFixed(2)}MB
+        </p>
+      </div>
+    );
+  }
+
   if (imagePreview) {
     return (
       <div className="space-y-2">
         <div className="image-preview relative">
           <div className="relative w-full h-36">
+            {/* Using <img> instead of next/image because src is a dynamic blob URL
+                from user-uploaded images, not a static/remote asset that can be optimized */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imagePreview}
@@ -87,11 +111,6 @@ const ImageUpload = memo(({ onImageUpload, imagePreview, onImageRemove, isCompre
       <UploadBracketIcon className="text-neural-muted mb-3 w-8 h-8" />
       <p className="text-xs font-semibold uppercase tracking-widest text-neural-text mb-1">IMG_REF_UPLOAD</p>
       <p className="text-xs text-neural-dim">DRAG_DROP_TARGET</p>
-      {isCompressing && (
-        <div className="mt-3 text-xs text-neural-accent">
-          COMPRESSING... {compressionProgress}%
-        </div>
-      )}
       <input
         ref={fileInputRef}
         type="file"
@@ -109,7 +128,7 @@ export default function Home() {
   const [idea, setIdea] = useState('');
   const [directions, setDirections] = useState('');
   const [isSurpriseLoading, setIsSurpriseLoading] = useState(false);
-  const [copiedType, setCopiedType] = useState('');
+  const [copiedType, setCopiedType] = useState(COPY_TARGETS.NONE);
   const [showHelp, setShowHelp] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [uploadedImage, setUploadedImage] = useState(null);
@@ -130,6 +149,26 @@ export default function Home() {
   const outputRef = useRef(null);
 
   const stylePresets = STYLE_PRESETS;
+
+  const seoJsonLd = useMemo(() => {
+    const siteUrl = getSchemaSiteUrl();
+    const base = getBaseSchemas(siteUrl);
+    return [
+      base.organization,
+      base.webSite,
+      base.webApplication,
+      base.howTo,
+      buildBreadcrumbSchema(siteUrl, [{ name: 'Home', path: '/' }]),
+      buildFaqSchema(siteUrl),
+      buildWebPageSchema({
+        siteUrl,
+        path: SEO_PAGES.home.path,
+        title: SEO_PAGES.home.title,
+        description: SEO_PAGES.home.description,
+        includeSpeakable: true,
+      }),
+    ];
+  }, []);
 
   const directionsWithStyles = useMemo(() => {
     const base = (directions || '').trim();
@@ -186,7 +225,7 @@ export default function Home() {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > INPUT_LIMITS.IMAGE_MAX_SIZE) {
       setError('Image file size must be less than 10MB.');
       return;
     }
@@ -196,36 +235,38 @@ export default function Home() {
     setCompressedSize(0);
     setIsCompressing(true);
     setCompressionProgress(0);
+    // Don't show preview during compression to avoid flicker
+    setImagePreview(null);
 
     try {
-      // preview with object URL for lower memory
+      // Clean up any existing object URL
       if (imageObjectUrlRef.current) {
         URL.revokeObjectURL(imageObjectUrlRef.current);
         imageObjectUrlRef.current = null;
       }
-      const firstUrl = URL.createObjectURL(file);
-      imageObjectUrlRef.current = firstUrl;
-      setImagePreview(firstUrl);
 
       const compressedFile = await compressImage(file, {
         onProgress: (progress) => setCompressionProgress(Math.round(progress)),
-        maxSizeMB: 1.5,
-        maxWidthOrHeight: 2000,
+        maxSizeMB: INPUT_LIMITS.IMAGE_TARGET_SIZE / (1024 * 1024),
+        maxWidthOrHeight: INPUT_LIMITS.IMAGE_MAX_DIMENSION,
         useWebWorker: true,
-        initialQuality: 0.8,
+        initialQuality: INPUT_LIMITS.IMAGE_INITIAL_QUALITY,
       });
 
       setCompressedSize(compressedFile.size);
       setUploadedImage(compressedFile);
-      // update preview to compressed version
-      URL.revokeObjectURL(firstUrl);
+      // Only create preview URL after compression is complete
       const compressedUrl = URL.createObjectURL(compressedFile);
       imageObjectUrlRef.current = compressedUrl;
       setImagePreview(compressedUrl);
 
-    } catch (error) {
-      logger.error('Error during image compression:', error);
+    } catch (compressionError) {
+      logger.error('Error during image compression:', compressionError);
+      // Fallback to original file with preview
       setUploadedImage(file);
+      const fallbackUrl = URL.createObjectURL(file);
+      imageObjectUrlRef.current = fallbackUrl;
+      setImagePreview(fallbackUrl);
       setError('Error compressing image. Using original file.');
     } finally {
       setIsCompressing(false);
@@ -244,25 +285,26 @@ export default function Home() {
 
   const markCopied = useCallback((type) => {
     setCopiedType(type);
-    setTimeout(() => setCopiedType(''), 2000);
+    setTimeout(() => setCopiedType(COPY_TARGETS.NONE), 2000);
   }, []);
 
   const copyText = useCallback(async (text, type) => {
     if (!text || error) return;
-    try {
-      await navigator.clipboard.writeText(text);
+    const result = await copyToClipboard(text);
+    if (result.success) {
       markCopied(type);
-    } catch (err) {
-      logger.error('Copy failed:', err);
+    } else {
+      logger.error('Copy failed:', result.error);
+      setError(result.error || 'Failed to copy to clipboard. Please try selecting and copying manually.');
     }
-  }, [error, markCopied]);
+  }, [error, markCopied, setError]);
 
   const handleCopyDefault = useCallback(() => {
-    copyText(generatedPrompt, 'default');
+    copyText(generatedPrompt, COPY_TARGETS.DEFAULT);
   }, [copyText, generatedPrompt]);
 
   const handleCopyJson = useCallback(() => {
-    copyText(generatedPrompt, 'json');
+    copyText(generatedPrompt, COPY_TARGETS.JSON);
   }, [copyText, generatedPrompt]);
 
   const handleCopyScene = useCallback(() => {
@@ -276,7 +318,7 @@ export default function Home() {
     } catch (parseErr) {
       logger.warn('Scene copy JSON parse failed:', parseErr);
     }
-    copyText(sceneText, 'scene');
+    copyText(sceneText, COPY_TARGETS.SCENE);
   }, [copyText, generatedPrompt, error]);
 
   const handleKeyDown = useCallback((e) => {
@@ -327,8 +369,11 @@ export default function Home() {
     } finally {
       setIsSurpriseLoading(false);
     }
+    // State setters (setX) are stable references from useState and don't need to be in deps.
+    // addEntry is wrapped in useCallback in useHistory and is also stable.
+    // setGeneratedPrompt, setShowOutput, setError come from useState in usePromptGenerator.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [addEntry, setError, setGeneratedPrompt, setShowOutput]);
 
   const handleClearAll = useCallback(() => {
     setIdea('');
@@ -351,7 +396,10 @@ export default function Home() {
   }, []);
 
   const copyPrompt = useCallback(async (text) => {
-    try { await navigator.clipboard.writeText(text); } catch { }
+    const result = await copyToClipboard(text);
+    if (!result.success) {
+      logger.warn('History copy failed:', result.error);
+    }
   }, []);
 
   const deleteEntry = useCallback((id) => deleteHistoryEntry(id), [deleteHistoryEntry]);
@@ -395,21 +443,32 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <title>GROKIFY_PROMPT v2.0 | AI Prompt Generator</title>
-        <meta name="description" content="Create professional, optimized prompts for AI image generation with GROKIFY_PROMPT v2.0." />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-        <link rel="preconnect" href="https://openrouter.ai" />
-        <link rel="dns-prefetch" href="https://openrouter.ai" />
-      </Head>
+      <SeoHead
+        title={SEO_PAGES.home.title}
+        description={SEO_PAGES.home.description}
+        path={SEO_PAGES.home.path}
+        jsonLd={seoJsonLd}
+      />
 
       <div className="min-h-screen py-6 px-4 sm:py-8 lg:px-6 relative z-10 flex items-center justify-center bg-neural-bg">
         <div className="max-w-5xl w-full mx-auto">
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:bg-black focus:text-neural-accent focus:px-4 focus:py-2 focus:border focus:border-neural-border"
+          >
+            Skip to main content
+          </a>
           <div className={`glass-ui transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
             {/* Neural Header */}
             <header className="neural-header">
-              <div className="neural-brand font-mono">
-                <span className="text-neural-muted">{'// '}</span>GROKIFY_PROMPT <span className="text-neural-accent">v2.0</span>
+              <div className="flex flex-col gap-1">
+                <h1 className="neural-brand font-mono">
+                  <span className="text-neural-muted">{'// '}</span>GROKIFY_PROMPT{' '}
+                  <span className="text-neural-accent">v2.0</span>
+                </h1>
+                <p className="text-xs text-neural-dim font-mono uppercase tracking-wider">
+                  AI PROMPT GENERATOR • IMAGE PROMPT MAKER • GROK-4 PROMPTS • PROMPT ENGINEERING TOOL
+                </p>
               </div>
               <div className="neural-status">
                 <span className="neural-status-dot" />
@@ -418,7 +477,7 @@ export default function Home() {
             </header>
 
             <ErrorBoundary>
-              <main className="p-6">
+              <main id="main-content" className="p-6">
                 <form onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
                   {/* Main Grid Layout */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -426,7 +485,7 @@ export default function Home() {
                     <div className="lg:col-span-2 space-y-4">
                       {/* Section 01: Primary Input */}
                       <div className="neural-section">
-                        <div className="neural-section-header">01 // PRIMARY_INPUT_DATA</div>
+                        <h2 className="neural-section-header">01 // PRIMARY_INPUT_DATA</h2>
                         <div className="relative">
                           <textarea
                             ref={ideaRef}
@@ -453,7 +512,7 @@ export default function Home() {
 
                       {/* Section 02: Modifiers */}
                       <div className="neural-section">
-                        <div className="neural-section-header">02 // MODIFIERS</div>
+                        <h2 className="neural-section-header">02 // MODIFIERS</h2>
                         <div className="relative">
                           <textarea
                             ref={directionsRef}
@@ -482,7 +541,7 @@ export default function Home() {
 
                       {/* Section 03: Style Matrix */}
                       <div className="neural-section">
-                        <div className="neural-section-header">03 // STYLE_MATRIX</div>
+                        <h2 className="neural-section-header">03 // STYLE_MATRIX</h2>
                         <button
                           type="button"
                           onClick={() => setShowStylePresets(!showStylePresets)}
@@ -517,7 +576,7 @@ export default function Home() {
                     <div className="space-y-4">
                       {/* Image Upload Section */}
                       <div className="neural-section">
-                        <div className="neural-section-header">04 // IMG_REFERENCE</div>
+                        <h2 className="neural-section-header">04 // IMG_REFERENCE</h2>
                         <ImageUpload
                           onImageUpload={handleImageUpload}
                           imagePreview={imagePreview}
@@ -531,7 +590,7 @@ export default function Home() {
 
                       {/* Config Flags */}
                       <div className="neural-section">
-                        <div className="neural-section-header">05 // CONFIG_FLAGS</div>
+                        <h2 className="neural-section-header">05 // CONFIG_FLAGS</h2>
                         <div className="neural-config">
                           {/* Emily's JSON Mode */}
                           <div className="neural-config-item">
@@ -642,55 +701,53 @@ export default function Home() {
                 </form>
 
                 {/* Output Section */}
-                {showOutput && (
-                  <div id="output-section" ref={outputRef} className="neural-output mt-6">
-                    <div className="neural-output-header">
-                      <span className="neural-output-title">OUTPUT_STREAM</span>
-                      {!error && generatedPrompt && (
-                        <div className="flex items-center gap-2">
-                          {isJsonMode ? (
-                            <>
-                              <button
-                                onClick={handleCopyJson}
-                                className={`copy-button ${copiedType === 'json' ? 'copied' : ''}`}
-                                title="Copy full JSON"
-                              >
-                                {copiedType === 'json' ? <CheckIcon /> : <CopyIcon />}
-                                <span>COPY_JSON</span>
-                              </button>
-                              <button
-                                onClick={handleCopyScene}
-                                className={`copy-button ${copiedType === 'scene' ? 'copied' : ''}`}
-                                title="Copy only the scene field"
-                              >
-                                {copiedType === 'scene' ? <CheckIcon /> : <CopyIcon />}
-                                <span>COPY_SCENE</span>
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={handleCopyDefault}
-                              className={`copy-button ${copiedType === 'default' ? 'copied' : ''}`}
-                              title="Copy to clipboard"
-                            >
-                              {copiedType === 'default' ? <CheckIcon /> : <CopyIcon />}
-                              <span>COPY</span>
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="neural-output-content">
-                      {error ? (
-                        <div className="error-content">{error}</div>
-                      ) : (
-                        <pre className="text-sm leading-relaxed text-neural-white whitespace-pre-wrap overflow-auto font-mono">
-                          <code>{generatedPrompt}</code>
-                        </pre>
-                      )}
+                <OutputDisplay
+                  ref={outputRef}
+                  showOutput={showOutput}
+                  generatedPrompt={generatedPrompt}
+                  error={error}
+                  isJsonMode={isJsonMode}
+                  copiedType={copiedType}
+                  onCopyDefault={handleCopyDefault}
+                  onCopyJson={handleCopyJson}
+                  onCopyScene={handleCopyScene}
+                />
+
+                {/* SEO-friendly content sections */}
+                <section className="mt-10 space-y-4" aria-label="About and frequently asked questions">
+                  <div className="neural-section">
+                    <h2 id="about" className="neural-section-header">
+                      06 // ABOUT_THIS_TOOL
+                    </h2>
+                    <div className="space-y-3 text-sm leading-relaxed text-neural-muted">
+                      <p>
+                        GROKIFY_PROMPT is an <strong>AI prompt generator</strong> and <strong>image prompt maker</strong>{' '}
+                        designed for fast, repeatable <strong>prompt engineering</strong>. It helps you turn an idea (and
+                        optional reference image) into detailed, high-quality prompts.
+                      </p>
+                      <p>
+                        Use it to create <strong>Grok-4 prompts</strong> for text-to-image workflows, or switch modes to
+                        generate structured JSON and text-to-video scene prompts.
+                      </p>
                     </div>
                   </div>
-                )}
+
+                  <div className="neural-section">
+                    <h2 id="faq" className="neural-section-header">
+                      07 // FAQ
+                    </h2>
+                    <div className="space-y-2">
+                      {SEO_FAQ.map((item) => (
+                        <details key={item.question} className="border border-white/10 bg-black/20 p-3">
+                          <summary className="cursor-pointer text-sm text-neural-white">
+                            {item.question}
+                          </summary>
+                          <div className="pt-2 text-sm text-neural-dim leading-relaxed">{item.answer}</div>
+                        </details>
+                      ))}
+                    </div>
+                  </div>
+                </section>
               </main>
             </ErrorBoundary>
           </div>
@@ -698,6 +755,24 @@ export default function Home() {
           {/* Footer */}
           <footer className="text-center py-6 space-y-2">
             <div className="neural-divider mb-4" />
+            <nav aria-label="Footer links" className="flex flex-wrap items-center justify-center gap-3 text-xs font-mono uppercase tracking-wider text-neural-dim">
+              <a href="#faq" className="hover:text-neural-accent transition-colors">
+                FAQ
+              </a>
+              <a href="#about" className="hover:text-neural-accent transition-colors">
+                ABOUT
+              </a>
+              <Link href="/privacy" className="hover:text-neural-accent transition-colors">
+                PRIVACY
+              </Link>
+              <Link href="/terms" className="hover:text-neural-accent transition-colors">
+                TERMS
+              </Link>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a href="/sitemap.xml" className="hover:text-neural-accent transition-colors">
+                SITEMAP
+              </a>
+            </nav>
             <p className="text-xs text-neural-dim font-mono uppercase tracking-wider">
               POWERED_BY: OpenRouter API | MODEL: x-ai/grok-4.1-fast
             </p>

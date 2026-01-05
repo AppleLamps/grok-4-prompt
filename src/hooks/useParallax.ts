@@ -6,7 +6,7 @@ import { useEffect } from 'react';
  * with smoothing via requestAnimationFrame. Pauses on tab hidden and respects
  * prefers-reduced-motion.
  */
-export default function useParallax() {
+export default function useParallax(): void {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -21,7 +21,7 @@ export default function useParallax() {
     let targetY = 0;
 
     let lastUpdate = 0;
-    const step = (timestamp) => {
+    const step = (timestamp: number): void => {
       if (timestamp - lastUpdate < 16) {
         rafId = requestAnimationFrame(step);
         return;
@@ -34,7 +34,7 @@ export default function useParallax() {
       rafId = requestAnimationFrame(step);
     };
 
-    const start = () => {
+    const start = (): void => {
       if (running) return;
       if (reduced.matches) return;
       if (document.hidden) return;
@@ -42,12 +42,12 @@ export default function useParallax() {
       rafId = requestAnimationFrame(step);
     };
 
-    const stop = () => {
+    const stop = (): void => {
       running = false;
       cancelAnimationFrame(rafId);
     };
 
-    const handlePointer = (e) => {
+    const handlePointer = (e: PointerEvent): void => {
       const { innerWidth, innerHeight } = window;
       const nx = (e.clientX / innerWidth) * 2 - 1; // [-1, 1]
       const ny = (e.clientY / innerHeight) * 2 - 1;
@@ -55,7 +55,7 @@ export default function useParallax() {
       targetY = ny;
     };
 
-    const handleOrientation = (e) => {
+    const handleOrientation = (e: DeviceOrientationEvent): void => {
       // gamma: left-right (-90, 90), beta: front-back (-180, 180)
       const nx = Math.max(-1, Math.min(1, (e.gamma || 0) / 45));
       const ny = Math.max(-1, Math.min(1, (e.beta || 0) / 90));
@@ -63,7 +63,7 @@ export default function useParallax() {
       targetY = ny;
     };
 
-    const handleVisibility = () => {
+    const handleVisibility = (): void => {
       if (document.hidden) {
         stop();
       } else {
@@ -71,7 +71,7 @@ export default function useParallax() {
       }
     };
 
-    const handleReducedMotionChange = () => {
+    const handleReducedMotionChange = (): void => {
       if (reduced.matches) {
         stop();
       } else {
@@ -84,12 +84,7 @@ export default function useParallax() {
     window.addEventListener('deviceorientation', handleOrientation, { passive: true });
     document.addEventListener('visibilitychange', handleVisibility);
     // modern browsers support addEventListener on MediaQueryList
-    if (typeof reduced.addEventListener === 'function') {
-      reduced.addEventListener('change', handleReducedMotionChange);
-    } else if (typeof reduced.addListener === 'function') {
-      // fallback
-      reduced.addListener(handleReducedMotionChange);
-    }
+    reduced.addEventListener('change', handleReducedMotionChange);
 
     // kick things off
     if (!reduced.matches) start();
@@ -98,11 +93,7 @@ export default function useParallax() {
       window.removeEventListener('pointermove', handlePointer);
       window.removeEventListener('deviceorientation', handleOrientation);
       document.removeEventListener('visibilitychange', handleVisibility);
-      if (typeof reduced.removeEventListener === 'function') {
-        reduced.removeEventListener('change', handleReducedMotionChange);
-      } else if (typeof reduced.removeListener === 'function') {
-        reduced.removeListener(handleReducedMotionChange);
-      }
+      reduced.removeEventListener('change', handleReducedMotionChange);
       stop();
     };
   }, []);

@@ -1,13 +1,36 @@
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 import { createHash } from 'crypto';
+import { API_CONFIG } from '../config/constants';
 
-// Singleton rate limiter shared across API routes
+/**
+ * In-memory rate limiter for API requests.
+ *
+ * IMPORTANT LIMITATION: This rate limiter uses in-memory storage, which means:
+ * - In serverless environments (Vercel, AWS Lambda), each instance has its own memory
+ * - Users can potentially bypass rate limits by hitting different serverless instances
+ * - For production with strict rate limiting requirements, consider using a distributed
+ *   store like Redis or Upstash:
+ *
+ *   import { RateLimiterRedis } from 'rate-limiter-flexible';
+ *   import Redis from 'ioredis';
+ *
+ *   const redisClient = new Redis(process.env.REDIS_URL);
+ *   const rateLimiter = new RateLimiterRedis({
+ *     storeClient: redisClient,
+ *     points: API_CONFIG.RATE_LIMIT_POINTS,
+ *     duration: API_CONFIG.RATE_LIMIT_DURATION,
+ *     keyPrefix: 'pg_rl',
+ *   });
+ *
+ * For this application, in-memory rate limiting provides reasonable protection
+ * against casual abuse while keeping infrastructure simple.
+ */
 const rateLimiter =
   global.__pgRateLimiter ||
   new RateLimiterMemory({
-    points: 5,
-    duration: 60,
-  }); // 5 requests per minute
+    points: API_CONFIG.RATE_LIMIT_POINTS,
+    duration: API_CONFIG.RATE_LIMIT_DURATION,
+  });
 
 if (!global.__pgRateLimiter) {
   global.__pgRateLimiter = rateLimiter;

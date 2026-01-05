@@ -1,7 +1,66 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import logger from '../utils/logger';
+import { getErrorMessage, isAbortError } from '../utils/errorMessages';
 
-const joinDirectionsWithStyles = (directions, activeStyles, stylePresets) => {
+/**
+ * Style presets mapping from name to value.
+ */
+export type StylePresets = Record<string, string>;
+
+/**
+ * Configuration options for the prompt generator hook.
+ */
+export interface UsePromptGeneratorOptions {
+  /** The main idea/concept input */
+  idea: string;
+  /** Style directions/modifiers */
+  directions: string;
+  /** Uploaded image file (optional) */
+  uploadedImage: File | null;
+  /** Whether to generate in JSON mode */
+  isJsonMode: boolean;
+  /** Whether in test/Elysian mode */
+  isTestMode: boolean;
+  /** Whether generating video prompts */
+  isVideoPrompt: boolean;
+  /** Set of active style preset names */
+  activeStyles: Set<string>;
+  /** Style presets configuration */
+  stylePresets: StylePresets;
+  /** Callback to add entry to history */
+  addHistoryEntry?: (entry: { idea: string; directions: string; prompt: string }) => void;
+}
+
+/**
+ * Return type for the usePromptGenerator hook.
+ */
+export interface UsePromptGeneratorReturn {
+  /** The generated prompt text */
+  generatedPrompt: string;
+  /** Set the generated prompt */
+  setGeneratedPrompt: React.Dispatch<React.SetStateAction<string>>;
+  /** Whether to show the output section */
+  showOutput: boolean;
+  /** Set show output state */
+  setShowOutput: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Whether a request is in progress */
+  isLoading: boolean;
+  /** Current error message */
+  error: string;
+  /** Set error message */
+  setError: React.Dispatch<React.SetStateAction<string>>;
+  /** Form submit handler */
+  handleSubmit: (e?: React.FormEvent) => Promise<void>;
+}
+
+/**
+ * Combines directions text with active style presets.
+ */
+const joinDirectionsWithStyles = (
+  directions: string,
+  activeStyles: Set<string>,
+  stylePresets: StylePresets
+): string => {
   const base = (directions || '').trim();
   const styleText = Array.from(activeStyles || [])
     .map((name) => stylePresets?.[name])
@@ -12,6 +71,9 @@ const joinDirectionsWithStyles = (directions, activeStyles, stylePresets) => {
   return base || styleText || '';
 };
 
+/**
+ * Custom hook for generating prompts via the API.
+ */
 export default function usePromptGenerator({
   idea,
   directions,
@@ -22,19 +84,19 @@ export default function usePromptGenerator({
   activeStyles,
   stylePresets,
   addHistoryEntry,
-}) {
+}: UsePromptGeneratorOptions): UsePromptGeneratorReturn {
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [showOutput, setShowOutput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const generateAbortRef = useRef(null);
+  const generateAbortRef = useRef<AbortController | null>(null);
 
   const buildDirections = useCallback(() => {
     return joinDirectionsWithStyles(directions, activeStyles, stylePresets);
   }, [directions, activeStyles, stylePresets]);
 
   const handleSubmit = useCallback(
-    async (e) => {
+    async (e?: React.FormEvent) => {
       e?.preventDefault?.();
       const ideaText = (idea || '').trim();
       if (!ideaText && !uploadedImage) {
@@ -56,7 +118,7 @@ export default function usePromptGenerator({
       const combinedDirections = buildDirections();
 
       try {
-        let response;
+        let response: Response;
         if (uploadedImage) {
           const formData = new FormData();
           formData.append('idea', ideaText);
@@ -84,7 +146,7 @@ export default function usePromptGenerator({
         }
 
         const ct = response.headers.get('content-type') || '';
-        let data;
+        let data: { prompt?: unknown; message?: string };
         if (ct.includes('application/json')) {
           data = await response.json();
         } else {
@@ -96,7 +158,9 @@ export default function usePromptGenerator({
           throw new Error(data?.message || 'Failed to generate prompt');
         }
 
-        const displayPrompt = isJsonMode ? JSON.stringify(data.prompt, null, 2) : (data.prompt || '').toString();
+        const displayPrompt = isJsonMode
+          ? JSON.stringify(data.prompt, null, 2)
+          : (data.prompt || '').toString();
 
         setGeneratedPrompt(displayPrompt);
         setShowOutput(true);
@@ -109,15 +173,12 @@ export default function usePromptGenerator({
           });
         }
       } catch (err) {
-        if (err.name === 'AbortError') return;
+        // Silently ignore user-cancelled requests
+        if (isAbortError(err)) return;
+
         logger.error('Generation error:', err);
-        let errorMessage = 'An unexpected error occurred.';
-        if (err.message?.includes('429')) {
-          errorMessage = 'Too many requests. Please wait a minute.';
-        } else if (err.message?.includes('500')) {
-          errorMessage = 'Server error. Try again later.';
-        }
-        setError(errorMessage);
+        // Use centralized error message utility for user-friendly messages
+        setError(getErrorMessage(err));
         setShowOutput(true);
       } finally {
         setIsLoading(false);
@@ -127,6 +188,7 @@ export default function usePromptGenerator({
     [idea, uploadedImage, isJsonMode, isTestMode, isVideoPrompt, buildDirections, addHistoryEntry]
   );
 
+  // Cleanup abort controller on unmount
   useEffect(() => {
     return () => {
       if (generateAbortRef.current) {
@@ -147,4 +209,3 @@ export default function usePromptGenerator({
     handleSubmit,
   };
 }
-

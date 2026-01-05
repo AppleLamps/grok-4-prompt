@@ -56,13 +56,8 @@ const nextConfig = {
               ].join('; ');
             })(),
           },
-          // Performance headers: proper caching during development vs production
-          ...(process.env.NODE_ENV === 'production'
-            ? [{
-                key: 'Cache-Control',
-                value: 'public, max-age=31536000, immutable',
-              }]
-            : []), // Don't set cache-control headers in development
+          // NOTE: Do not set long-lived Cache-Control for HTML routes here.
+          // Next/Vercel already handle caching for static assets safely.
         ],
       },
     ];
