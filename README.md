@@ -1,6 +1,6 @@
 # GROKIFY_PROMPT v2.0 - AI Prompt Generator
 
-A premium AI prompt generator powered by OpenRouter's Grok-4 model. Transform your ideas into detailed, optimized prompts for AI image generation with a cyberpunk terminal-style interface.
+A premium AI prompt generator powered by OpenRouter's Grok-4.1 Fast model. Transform your ideas into detailed, optimized prompts for AI image generation with a cyberpunk terminal-style interface.
 
 ## 🚀 Features
 
@@ -40,17 +40,19 @@ A premium AI prompt generator powered by OpenRouter's Grok-4 model. Transform yo
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - OpenRouter API key (get one at [openrouter.ai/keys](https://openrouter.ai/keys))
 
 ### Local Development
 
 1. **Clone and install dependencies:**
+
    ```bash
    npm install
    ```
 
 2. **Set up environment variables:**
+
    ```bash
    # Copy the example environment file
    cp .env.local.example .env.local
@@ -63,6 +65,7 @@ A premium AI prompt generator powered by OpenRouter's Grok-4 model. Transform yo
    ```
 
 3. **Run the development server:**
+
    ```bash
    npm run dev
    ```
@@ -197,6 +200,6 @@ If you have any questions or need help with deployment, please open an issue or 
 
 ---
 
-**Built with ❤️ using Next.js 14, Tailwind CSS, and OpenRouter's Grok-4 model.**
+**Built with ❤️ using Next.js 14, Tailwind CSS, and OpenRouter's Grok-4.1 Fast model.**
 
 Created by [@lamps_apple](https://x.com/lamps_apple)
