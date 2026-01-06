@@ -98,7 +98,7 @@ export const UI_CONFIG = {
 
 export const OPENROUTER_MODELS = {
   /** Primary model for prompt generation */
-  PRIMARY: 'x-ai/grok-4.1-fast',
+  PRIMARY: 'nvidia/nemotron-nano-12b-v2-vl:free',
   /** Model for prompt refinement stage */
   REFINEMENT: 'google/gemini-2.5-flash-lite-preview-06-17',
 } as const;
