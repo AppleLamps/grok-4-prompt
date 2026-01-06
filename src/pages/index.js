@@ -776,7 +776,7 @@ export default function Home() {
               </a>
             </nav>
             <p className="text-xs text-neural-dim font-mono uppercase tracking-wider">
-              POWERED_BY: OpenRouter API | MODEL: nvidia/nemotron-nano-12b-v2-vl:free
+              POWERED_BY: OpenRouter API | MODEL: x-ai/grok-4.1-fast
             </p>
             <p className="text-xs text-neural-dim font-mono">
               CREATED_BY: @lamps_apple |{' '}
