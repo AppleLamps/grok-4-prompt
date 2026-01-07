@@ -23,6 +23,9 @@ export const SEO_KEYWORDS = [
   'text to video prompt',
   'OpenRouter',
   'Grok prompt generator',
+  'grok imagine json prompt',
+  'grok ai prompts generator',
+  'grok imagine image to video json prompt parameters',
 ];
 
 export const SEO_TWITTER_HANDLE = '@lamps_apple';
@@ -84,6 +87,16 @@ export const SEO_FAQ = [
     question: 'What makes this a prompt engineering tool?',
     answer:
       'It helps you standardize prompt structure (subject, style, composition, constraints) and quickly iterate variants to improve output quality and consistency.',
+  },
+  {
+    question: 'Does GROKIFY_PROMPT generate JSON prompts for Grok Imagine?',
+    answer:
+      'Yes. GROKIFY_PROMPT outputs structured JSON prompts compatible with Grok Imagine, including all parameters for style, composition, lighting, and mood in a ready-to-use format.',
+  },
+  {
+    question: 'Can I generate image to video JSON prompt parameters?',
+    answer:
+      'Yes. GROKIFY_PROMPT supports generating JSON prompt parameters for both image generation and image-to-video workflows, making it easy to create animated content from static concepts.',
   },
 ];
 
