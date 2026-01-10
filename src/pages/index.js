@@ -654,8 +654,8 @@ export default function Home() {
                   </div>
 
                   {/* Action Bar */}
-                  <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 border border-neural-border bg-black/20">
-                    <div className="flex gap-2">
+                  <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 p-4 border border-neural-border bg-black/20">
+                    <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto">
                       <button
                         type="button"
                         onClick={handleClearAll}
