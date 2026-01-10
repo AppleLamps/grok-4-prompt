@@ -722,13 +722,18 @@ export default function Home() {
                     </summary>
                     <div className="space-y-3 text-sm leading-relaxed text-neural-muted mt-4">
                       <p>
-                        GROKIFY_PROMPT is an <strong>AI prompt generator</strong> and <strong>image prompt maker</strong>{' '}
+                        GROKIFY_PROMPT is a <strong>Grok Imagine prompt generator</strong>, <strong>AI prompt generator</strong>, and <strong>image prompt maker</strong>{' '}
                         designed for fast, repeatable <strong>prompt engineering</strong>. It helps you turn an idea (and
-                        optional reference image) into detailed, high-quality prompts.
+                        optional reference image) into detailed, high-quality prompts compatible with <strong>xAI Grok Imagine</strong>.
                       </p>
                       <p>
                         Use it to create <strong>GROK IMAGINE PROMPTS</strong> for text-to-image workflows, or switch modes to
-                        generate structured JSON and text-to-video scene prompts.
+                        generate structured <strong>JSON prompts</strong> in the Grok Imagine format. For video workflows, enable VIDEO_SEQ mode
+                        to create <strong>image-to-video prompts</strong> with cinematic scene descriptions optimized for frame rate and motion.
+                      </p>
+                      <p>
+                        The <strong>JSON prompt format</strong> includes all parameters for scene, subjects, style, lighting, mood, and camera settings—ready
+                        to use with the <strong>Grok Imagine API</strong> for both image generation and video creation.
                       </p>
                     </div>
                   </details>
