@@ -45,10 +45,10 @@ export default function SpaceBackground() {
       canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // cache the vignette gradient
+      // cache the vignette gradient (reduced opacity for brighter appearance)
       bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.6, 0, w * 0.5, h * 0.6, Math.max(w, h));
       bgGrad.addColorStop(0, 'rgba(15, 23, 42, 0)');
-      bgGrad.addColorStop(1, 'rgba(15, 23, 42, 0.4)');
+      bgGrad.addColorStop(1, 'rgba(15, 23, 42, 0.2)');
       seedStars();
     };
 

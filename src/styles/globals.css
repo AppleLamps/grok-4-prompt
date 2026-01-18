@@ -344,7 +344,7 @@
 
   /* --- Enhanced Animated Space Background --- */
   .aurora-container {
-    @apply fixed inset-0 z-0 opacity-75;
+    @apply fixed inset-0 z-0 opacity-90;
     background-image: repeating-linear-gradient(0deg, #64748b1a 0px, #64748b1a 1px, transparent 1px, transparent 24px),
       repeating-linear-gradient(90deg, #64748b1a 0px, #64748b1a 1px, transparent 1px, transparent 24px);
     background-size: 24px 24px;
@@ -353,12 +353,12 @@
   }
 
   .aurora-bg {
-    @apply absolute inset-[-150px] opacity-85;
+    @apply absolute inset-[-150px];
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(168, 85, 247, 0.35), transparent),
-      radial-gradient(ellipse 60% 40% at 30% 100%, rgba(99, 102, 241, 0.3), transparent),
-      radial-gradient(ellipse 90% 60% at 70% -10%, rgba(96, 165, 250, 0.35), transparent),
-      radial-gradient(ellipse 70% 30% at 80% 20%, rgba(6, 182, 212, 0.2), transparent);
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(168, 85, 247, 0.45), transparent),
+      radial-gradient(ellipse 60% 40% at 30% 100%, rgba(99, 102, 241, 0.4), transparent),
+      radial-gradient(ellipse 90% 60% at 70% -10%, rgba(96, 165, 250, 0.45), transparent),
+      radial-gradient(ellipse 70% 30% at 80% 20%, rgba(6, 182, 212, 0.3), transparent);
     mix-blend-mode: screen;
     will-change: transform;
     animation: auroraShift 40s ease-in-out infinite alternate;
@@ -378,12 +378,26 @@
     to { background-position: 100% 0%, 70% 100%, 0% 0%; filter: hue-rotate(20deg); }
   }
 
-  /* --- Main UI Card (updated for neural theme) --- */
+  /* --- Main UI Card (updated for neural theme with ambient glow) --- */
   .glass-ui {
     @apply relative;
     background: #0d0d0d;
     border: 1px solid rgba(245, 158, 11, 0.2);
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(245, 158, 11, 0.1);
+  }
+
+  .glass-ui::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 30%, rgba(245, 158, 11, 0.03), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glass-ui > * {
+    position: relative;
+    z-index: 1;
   }
 
   /* --- Inputs (updated for neural theme) --- */
