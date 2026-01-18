@@ -52,10 +52,10 @@ const OutputDisplay = forwardRef<HTMLDivElement, OutputDisplayProps>(
         aria-live="polite"
         aria-label="Generated prompt output"
       >
-        <div className="neural-output-header">
+        <div className="neural-output-header flex-wrap gap-2">
           <span className="neural-output-title">OUTPUT_STREAM</span>
           {!error && generatedPrompt && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <CopyButtons
                 isJsonMode={isJsonMode}
                 copiedType={copiedType}

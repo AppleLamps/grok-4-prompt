@@ -8,11 +8,11 @@ export const SEO_APP_NAME = 'GROKIFY_PROMPT v2.0';
 // If missing, pages will fall back to relative canonicals/OG URLs.
 export const SEO_SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/+$/, '');
 
-export const SEO_DEFAULT_TITLE = `${SEO_APP_NAME} — AI Prompt Generator & Image Prompt Maker`;
+export const SEO_DEFAULT_TITLE = `${SEO_APP_NAME} — Grok Imagine JSON Prompt Generator`;
 export const SEO_TITLE_TEMPLATE = `%s | ${SEO_SITE_NAME}`;
 
 export const SEO_DEFAULT_DESCRIPTION =
-  'Create production-grade GROK IMAGINE PROMPTS in seconds. GROKIFY_PROMPT is an AI prompt generator and image prompt maker for prompt engineering, text-to-image, and text-to-video workflows.';
+  'Generate Grok Imagine JSON prompts instantly. GROKIFY_PROMPT is an AI prompt generator for xAI Grok Imagine—create structured JSON prompts, image-to-video prompts, and text-to-image workflows with full parameter control.';
 
 export const SEO_KEYWORDS = [
   'AI prompt generator',
@@ -23,6 +23,20 @@ export const SEO_KEYWORDS = [
   'text to video prompt',
   'OpenRouter',
   'Grok prompt generator',
+  'grok imagine json prompt',
+  'grok ai prompts generator',
+  'grok imagine image to video json prompt parameters',
+  // Additional keywords from GSC data
+  'grok imagine prompt generator',
+  'grok imagine prompt format json',
+  'grok imagine image to video frame rate',
+  'grok xai',
+  'xAI grok imagine',
+  'grok imagine api',
+  '30 fps json prompt',
+  'image to video fps',
+  'grok imagine json prompt video',
+  'grok imagine json prompt parameters',
 ];
 
 export const SEO_TWITTER_HANDLE = '@lamps_apple';
@@ -30,7 +44,7 @@ export const SEO_TWITTER_HANDLE = '@lamps_apple';
 // Social share image (1200x630). Place at public/og.png.
 export const SEO_OG_IMAGE_PATH = '/og.png';
 export const SEO_OG_IMAGE_ALT =
-  'GROKIFY_PROMPT v2.0 — AI prompt generator and image prompt maker';
+  'GROKIFY_PROMPT v2.0 — Grok Imagine JSON prompt generator for xAI image and video workflows';
 
 export const SEO_THEME_COLOR = '#0a0a0a';
 export const SEO_LOCALE = 'en_US';
@@ -84,6 +98,36 @@ export const SEO_FAQ = [
     question: 'What makes this a prompt engineering tool?',
     answer:
       'It helps you standardize prompt structure (subject, style, composition, constraints) and quickly iterate variants to improve output quality and consistency.',
+  },
+  {
+    question: 'Does GROKIFY_PROMPT generate JSON prompts for Grok Imagine?',
+    answer:
+      'Yes. GROKIFY_PROMPT outputs structured JSON prompts compatible with Grok Imagine, including all parameters for style, composition, lighting, and mood in a ready-to-use format.',
+  },
+  {
+    question: 'Can I generate image to video JSON prompt parameters?',
+    answer:
+      'Yes. GROKIFY_PROMPT supports generating JSON prompt parameters for both image generation and image-to-video workflows, making it easy to create animated content from static concepts.',
+  },
+  {
+    question: 'What is the JSON prompt format for Grok Imagine?',
+    answer:
+      'GROKIFY_PROMPT generates structured JSON prompts in the Grok Imagine format, including fields for scene, subjects, style, color_palette, lighting, mood, background, composition, and camera parameters. The JSON output is ready to use with xAI Grok image generation.',
+  },
+  {
+    question: 'Can I set frame rate and fps for image to video generation?',
+    answer:
+      'Yes. When generating image-to-video prompts, GROKIFY_PROMPT creates scene descriptions optimized for video generation workflows. Frame rate settings like 30 fps are typically configured in your video generation tool (such as xAI Grok Imagine) rather than in the prompt itself.',
+  },
+  {
+    question: 'Does this work with xAI Grok Imagine API?',
+    answer:
+      'Yes. GROKIFY_PROMPT generates prompts compatible with xAI Grok Imagine. The structured JSON format and detailed scene descriptions work seamlessly with the Grok Imagine API for both image and video generation.',
+  },
+  {
+    question: 'Is GROKIFY_PROMPT a Grok Imagine prompt generator?',
+    answer:
+      'Yes. GROKIFY_PROMPT is designed specifically as a Grok Imagine prompt generator. It creates detailed, production-ready prompts optimized for xAI Grok image and video generation, with support for JSON format output.',
   },
 ];
 
