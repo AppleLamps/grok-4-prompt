@@ -462,26 +462,25 @@ export default function Home() {
             {/* Neural Header */}
             <header className="neural-header">
               <div className="flex flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="neural-brand font-mono">
-                    <span className="text-neural-muted">{'// '}</span>GROKIFY_PROMPT{' '}
-                    <span className="text-neural-accent">v2.0</span>
-                  </h1>
-                  <a
-                    href="https://bags.fm/8F2FvujRh6zqoR4wtasocKgw4oPcu3MWK4MG77NwBAGS"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-mono text-neural-accent hover:text-neural-bright transition-colors"
-                    title="CA: 8F2FvujRh6zqoR4wtasocKgw4oPcu3MWK4MG77NwBAGS"
-                  >
-                    <span className="hidden lg:inline">CA: 8F2FvujRh6zqoR4wtasocKgw4oPcu3MWK4MG77NwBAGS</span>
-                    <span className="lg:hidden">CA: 8F2F...BAGS</span>
-                  </a>
-                </div>
+                <h1 className="neural-brand font-mono">
+                  <span className="text-neural-muted">{'// '}</span>GROKIFY_PROMPT{' '}
+                  <span className="text-neural-accent">v2.0</span>
+                </h1>
                 <p className="text-xs text-neural-dim font-mono uppercase tracking-wider">
                   GROK IMAGINE PROMPTS
                 </p>
               </div>
+              <a
+                href="https://bags.fm/8F2FvujRh6zqoR4wtasocKgw4oPcu3MWK4MG77NwBAGS"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm lg:text-base font-mono text-neural-accent hover:text-neural-bright transition-colors animate-pulse"
+                style={{ textShadow: '0 0 10px rgba(255, 165, 0, 0.8), 0 0 20px rgba(255, 165, 0, 0.6), 0 0 30px rgba(255, 165, 0, 0.4)' }}
+                title="CA: 8F2FvujRh6zqoR4wtasocKgw4oPcu3MWK4MG77NwBAGS"
+              >
+                <span className="hidden lg:inline">CA: 8F2FvujRh6zqoR4wtasocKgw4oPcu3MWK4MG77NwBAGS</span>
+                <span className="lg:hidden">CA: 8F2F...BAGS</span>
+              </a>
               <div className="neural-status">
                 <span className="neural-status-dot" />
                 SYSTEM ONLINE
