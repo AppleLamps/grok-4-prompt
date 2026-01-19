@@ -15,6 +15,14 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Disable 300ms tap delay on mobile for all interactive elements */
+    touch-action: manipulation;
+  }
+
+  /* Ensure all interactive elements have fast touch response */
+  button, a, [role="button"], input, select, textarea, .neural-btn, .neural-toggle {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
@@ -169,9 +177,11 @@
 
   /* --- Neural Toggle --- */
   .neural-toggle {
-    @apply relative inline-flex h-6 w-11 items-center rounded-sm cursor-pointer transition-colors;
+    @apply relative inline-flex h-6 w-11 items-center rounded-sm cursor-pointer;
     background: #1a1a1a;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    /* Use specific transition for better mobile performance */
+    transition: background-color 0.15s ease-out, border-color 0.15s ease-out;
   }
 
   .neural-toggle[data-checked="true"] {
@@ -179,9 +189,16 @@
     border-color: #F59E0B;
   }
 
+  /* Active state for immediate touch feedback */
+  .neural-toggle:active {
+    transform: scale(0.95);
+  }
+
   .neural-toggle-thumb {
-    @apply inline-block h-4 w-4 transform transition-transform;
+    @apply inline-block h-4 w-4;
     background: #E5E7EB;
+    /* Use GPU-accelerated transform with fast transition */
+    transition: transform 0.15s ease-out;
   }
 
   .neural-toggle[data-checked="false"] .neural-toggle-thumb {
@@ -195,10 +212,12 @@
 
   /* --- Neural Buttons --- */
   .neural-btn {
-    @apply px-4 py-3 text-xs font-semibold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2;
+    @apply px-4 py-3 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2;
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #9CA3AF;
+    /* Use specific properties instead of transition-all for better mobile performance */
+    transition: border-color 0.15s ease-out, color 0.15s ease-out, background-color 0.15s ease-out;
   }
 
   .neural-btn:hover:not(:disabled) {
@@ -206,20 +225,36 @@
     color: #E5E7EB;
   }
 
+  /* Active state for immediate touch feedback */
+  .neural-btn:active:not(:disabled) {
+    background-color: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.6);
+    color: #F59E0B;
+    transform: scale(0.98);
+  }
+
   .neural-btn:disabled {
     @apply opacity-50 cursor-not-allowed;
   }
 
   .neural-btn-primary {
-    @apply px-8 py-4 text-sm font-bold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2;
+    @apply px-8 py-4 text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2;
     background: #F59E0B;
     border: none;
     color: #0a0a0a;
+    /* Use specific properties instead of transition-all for better mobile performance */
+    transition: background-color 0.15s ease-out, transform 0.1s ease-out;
   }
 
   .neural-btn-primary:hover:not(:disabled) {
     background: #FBBF24;
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+    /* Remove box-shadow transition - it's GPU expensive */
+  }
+
+  /* Active state for immediate touch feedback */
+  .neural-btn-primary:active:not(:disabled) {
+    background: #D97706;
+    transform: scale(0.98);
   }
 
   .neural-btn-primary:disabled {
@@ -378,6 +413,23 @@
     to { background-position: 100% 0%, 70% 100%, 0% 0%; filter: hue-rotate(20deg); }
   }
 
+  /* Disable expensive filter animations on mobile for better performance */
+  @media (max-width: 768px) {
+    .aurora-bg {
+      animation: none;
+      filter: none;
+      transform: none;
+    }
+  }
+
+  /* Also respect prefers-reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    .aurora-bg {
+      animation: none;
+      filter: none;
+    }
+  }
+
   /* --- Main UI Card (updated for neural theme with ambient glow) --- */
   .glass-ui {
     @apply relative;
@@ -426,15 +478,25 @@
 
   /* Enhanced Buttons (updated for neural theme) */
   .premium-button {
-    @apply px-4 py-3 text-xs font-semibold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2;
+    @apply px-4 py-3 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2;
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #9CA3AF;
+    /* Use specific properties for better mobile performance */
+    transition: border-color 0.15s ease-out, color 0.15s ease-out, background-color 0.15s ease-out;
   }
 
   .premium-button:hover:not(:disabled) {
     border-color: rgba(245, 158, 11, 0.4);
     color: #E5E7EB;
+  }
+
+  /* Active state for immediate touch feedback */
+  .premium-button:active:not(:disabled) {
+    background-color: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.6);
+    color: #F59E0B;
+    transform: scale(0.98);
   }
 
   .premium-button:disabled {
@@ -445,11 +507,17 @@
     background: #F59E0B;
     border: none;
     color: #0a0a0a;
+    transition: background-color 0.15s ease-out, transform 0.1s ease-out;
   }
 
   .premium-button.primary:hover:not(:disabled) {
     background: #FBBF24;
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+  }
+
+  /* Active state for immediate touch feedback */
+  .premium-button.primary:active:not(:disabled) {
+    background: #D97706;
+    transform: scale(0.98);
   }
 
   /* Loading shimmer */
@@ -465,14 +533,21 @@
   @media (prefers-reduced-motion: reduce) { .premium-button.loading, .premium-button.loading:disabled { animation: none; background-position: 50% 0; } }
 
   .secondary-button {
-    @apply px-4 py-3 text-xs font-semibold uppercase tracking-wider transition-all duration-200;
+    @apply px-4 py-3 text-xs font-semibold uppercase tracking-wider;
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #9CA3AF;
+    /* Use specific properties for better mobile performance */
+    transition: border-color 0.15s ease-out, color 0.15s ease-out, background-color 0.15s ease-out;
   }
   .secondary-button:hover:not(:disabled) {
     border-color: rgba(245, 158, 11, 0.4);
     color: #E5E7EB;
+  }
+  /* Active state for immediate touch feedback */
+  .secondary-button:active:not(:disabled) {
+    background-color: rgba(245, 158, 11, 0.15);
+    transform: scale(0.98);
   }
 
   /* Enhanced Output (updated for neural theme) */
@@ -482,14 +557,22 @@
     border: 1px solid rgba(245, 158, 11, 0.2);
   }
   .copy-button {
-    @apply flex items-center justify-center gap-2 px-3 py-2 text-xs uppercase tracking-wider transition-all whitespace-nowrap;
+    @apply flex items-center justify-center gap-2 px-3 py-2 text-xs uppercase tracking-wider whitespace-nowrap;
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #9CA3AF;
+    /* Use specific properties for better mobile performance */
+    transition: border-color 0.15s ease-out, color 0.15s ease-out, background-color 0.15s ease-out;
   }
   .copy-button:hover {
     border-color: rgba(245, 158, 11, 0.4);
     color: #E5E7EB;
+  }
+  /* Active state for immediate touch feedback */
+  .copy-button:active {
+    background-color: rgba(245, 158, 11, 0.2);
+    border-color: rgba(245, 158, 11, 0.6);
+    transform: scale(0.97);
   }
   .copy-button.copied {
     background: #F59E0B;
@@ -526,14 +609,22 @@
 
   /* Enhanced Floating buttons (updated for neural theme) */
   .help-button, .history-button {
-    @apply fixed w-12 h-12 flex items-center justify-center cursor-pointer z-50 transition-all;
+    @apply fixed w-12 h-12 flex items-center justify-center cursor-pointer z-50;
     background: rgba(17, 17, 17, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #9CA3AF;
+    /* Use specific properties for better mobile performance */
+    transition: border-color 0.15s ease-out, color 0.15s ease-out, background-color 0.15s ease-out;
   }
   .help-button:hover, .history-button:hover {
     border-color: rgba(245, 158, 11, 0.4);
     color: #F59E0B;
+  }
+  /* Active state for immediate touch feedback */
+  .help-button:active, .history-button:active {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: rgba(245, 158, 11, 0.6);
+    transform: scale(0.95);
   }
   .help-button { @apply bottom-6 right-6; }
   .history-button { @apply bottom-20 right-6; }
